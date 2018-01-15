@@ -1,0 +1,57 @@
+package com.pmk.client;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+import com.google.gwt.user.client.rpc.AsyncCallback;
+import com.google.gwt.user.client.ui.SuggestOracle.Suggestion;
+import com.pmk.shared.CartItem;
+import com.pmk.shared.CustomerBean;
+import com.pmk.shared.KeyNamePair;
+import com.pmk.shared.LoginUser;
+import com.pmk.shared.OrderBean;
+import com.pmk.shared.ProductBean;
+
+/**
+ * The async counterpart of <code>GreetingService</code>.
+ */
+public interface PosServiceAsync {
+
+	void getLoginUser(String userpin, AsyncCallback<LoginUser> asyncCallback);
+	
+	void addProductToCartFromBarcode(String text, int priceListId, int bpartnerId,
+			AsyncCallback<CartItem> asyncCallback);
+
+	void addProductToCart(int productId, int priceListId, int customerID,
+			AsyncCallback<CartItem> asyncCallback);
+
+	void saveProduct(ProductBean bean, AsyncCallback<Void> asyncCallback);
+
+	void getUomList(AsyncCallback<List<KeyNamePair>> asyncCallback);
+
+	void loadProduct(int productId, int priceListId,
+			AsyncCallback<ProductBean> asyncCallback);
+
+	void loadCustomer(int salesCustomerId,
+			AsyncCallback<CustomerBean> asyncCallback);
+
+	void saveCustomer(CustomerBean bean, AsyncCallback<Void> asyncCallback);
+
+	void savePaymentDetails(int salesCustomerId, BigDecimal value,
+			AsyncCallback<Void> asyncCallback);
+
+	void completeOrder(List<CartItem> items, OrderBean order,
+			AsyncCallback<Void> asyncCallback);
+
+	void getSalesHistory(long timelong,
+			String paymentType, AsyncCallback<List<OrderBean>> asyncCallback);
+
+	void getProductSuggestions(String trim,
+			AsyncCallback<List<Suggestion>> asyncCallback);
+
+	void getCustomerSuggestions(String trim,
+			AsyncCallback<List<Suggestion>> asyncCallback);
+
+
+
+}

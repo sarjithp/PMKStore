@@ -1,0 +1,64 @@
+/** Add css rules here for your application. */
+
+/** Most GWT widgets already have a style name defined */
+.gwt-DialogBox {
+  width: 400px;
+}
+
+.gwt-DialogBox1 {
+  width: 600px;
+}
+
+.dialogVPanel {
+  margin: 5px;
+}
+.gwt-ListBox {
+  padding: 5px 4px;
+  border: 1px solid #ccc;
+  border-top: 1px solid #999;
+  font-size: small;
+  font-family: Arial Unicode MS, Arial, sans-serif;
+  width: 100%;
+}
+.completeButton {
+  margin: 15px 6px 6px;
+  height: 25px;
+  font-weight: bold;
+  color: red;
+}
+
+.cartContainer {
+	height: 450px;
+	overflow: auto;
+}
+
+.grantTotalBox, .totalCountBox {
+	height: 25px;
+	font-size: 25px;
+	font-weight: bold;
+	color: red;
+	width: 150px;
+	text-align: right;
+}
+.totalCountBox {
+	color: black;
+}
+.errorMsg {
+	color: red;
+	text-align: center;
+}
+.successMsg {
+	color: green;
+	text-align: center;
+}
+.popupButton {
+	height: 30px;
+	float: right;
+}
+.textAlignRight {
+	text-align: right !important;
+}
+.actionBtn {
+	width : 100px;
+	text-transform: capitalize;
+}
