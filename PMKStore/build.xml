@@ -2,7 +2,7 @@
 <project name="PMKStore" default="war" basedir=".">
   <property name="permutation" value="" />
   <!-- Configure path to GWT SDK -->
-  <property name="gwt.sdk" location="reference/gwt-2.6.1" />
+  <property name="gwt.sdk" location="reference/gwt-2.8.2" />
   <property name="build.dir" value="${basedir}/war/WEB-INF/classes" />
 
   <path id="project.class.path">
@@ -79,9 +79,9 @@
 	        <classpath>
 	            <pathelement location="src"/>
 	            <path refid="project.class.path"/>
-	            <pathelement location="./reference/gwt-2.6.1/gwt-codeserver.jar" />
-	            <pathelement location="./reference/gwt-2.6.1/validation-api-1.0.0.GA.jar" />
-	            <pathelement location="./reference/gwt-2.6.1/validation-api-1.0.0.GA-sources.jar" />
+	            <pathelement location="./reference/gwt-2.8.2/gwt-codeserver.jar" />
+	            <pathelement location="./reference/gwt-2.8.2/validation-api-1.0.0.GA.jar" />
+	            <pathelement location="./reference/gwt-2.8.2/validation-api-1.0.0.GA-sources.jar" />
 	        </classpath>
 	        <jvmarg value="-Xmx1024M"/>
 	        <!--<arg value="-bindAddress"/>
@@ -157,31 +157,26 @@
   <target name="build" depends="gwtc" description="Build this project" />
 
   <target name="war" depends="build" description="Create a war file">
-    <zip destfile="PMKGrandMart.war" basedir="war"/>
+    <zip destfile="PMK.war" basedir="war"/>
   </target>
 	
   <target name="deploy" depends="war" description="Deploy war file to adempireQA">
-	<copy todir="/home/sarjith/workspace/LatestAdempiere/adempiere/install/build/Adempiere/tomcat/webapps/" overwrite="true">
-		<fileset file="PMKGrandMart.war">
-		</fileset>
-	</copy>
-	<copy todir="/home/sarjith/workspace/LatestAdempiere/adempiere/install/build/Adempiere/jboss/server/adempiere/deploy/adempiere.ear/" overwrite="true">
-		<fileset file="PMKGrandMart.war">
+	<copy todir="../apache-tomcat-7.0.62/webapps/" overwrite="true">
+		<fileset file="PMK.war">
 		</fileset>
 	</copy>
   </target>
 
   <target name="tmp" depends="javac" description="to create war file by skipping gwtc if there is only server side change">
-    <zip destfile="PMKGrandMart.war" basedir="war"/>
-    <copy todir="/home/sarjith/workspace/LatestAdempiere/adempiere/install/build/Adempiere/tomcat/webapps/" overwrite="true" file="PMKGrandMart.war" />
-    <copy todir="/home/sarjith/workspace/LatestAdempiere/adempiere/install/build/Adempiere/jboss/server/adempiere/deploy/adempiere.ear/" overwrite="true" file="PMKGrandMart.war" />
+    <zip destfile="PMK.war" basedir="war"/>
+    <copy todir="../apache-tomcat-7.0.62/webapps/" overwrite="true" file="PMK.war" />
   </target>
 
   <target name="clean" description="Cleans this project">
 	<delete dir="war/WEB-INF/classes" failonerror="false" />
 	<delete dir="war/pmkstore" failonerror="false" />
   	<delete file="war/WEB-INF/lib/gwt-servlet.jar" failonerror="false" />
-  	<delete file="PMKGrandMart.war" failonerror="false" />
+  	<delete file="PMK*.war" failonerror="false" />
   </target>
 
 	<target name="createapplet" depends="javac">

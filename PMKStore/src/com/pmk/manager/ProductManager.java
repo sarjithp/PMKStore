@@ -33,7 +33,7 @@ public class ProductManager {
 			String trxName) throws OperationException {
 		if (bean.getProductCode() != null && !bean.getProductCode().trim().isEmpty()) {
 			int prids[] = MProduct.getAllIDs(MProduct.Table_Name, "value = '" + bean.getProductCode() 
-					+ "' AND ad_client_id = " + Env.getAD_Client_ID(ctx), null);
+					+ "' AND m_product_id <> " + bean.getProductId() + " AND ad_client_id = " + Env.getAD_Client_ID(ctx), null);
 			if (prids != null && prids.length > 0) {
 				throw new OperationException("Code Already exists...!!!");
 			}
@@ -47,12 +47,26 @@ public class ProductManager {
 		product.setC_UOM_ID(bean.getUomId());
 		
 		//setting default category
-		int ids[] = MProductCategory.getAllIDs(MProductCategory.Table_Name, "ad_client_id = " + Env.getAD_Client_ID(ctx), null);
-		product.setM_Product_Category_ID(ids[0]);
+		if (bean.isCreateNewCategory()) {
+			 MProductCategory category = new MProductCategory(ctx, 0, trxName);
+			 category.setName(bean.getNewCategoryName());
+			 category.setValue(category.getName());
+			 PoHandler.savePO(category);
+			 product.setM_Product_Category_ID(category.get_ID());
+		} else if (bean.getCategoryId() != null && bean.getCategoryId() != 0 && !bean.isCreateNewCategory()) {
+			product.setM_Product_Category_ID(bean.getCategoryId());
+		} else {
+			int ids[] = MProductCategory.getAllIDs(MProductCategory.Table_Name, "ad_client_id = " + Env.getAD_Client_ID(ctx), null);
+			product.setM_Product_Category_ID(ids[0]);
+		}
 		
 		//setting default tax category
-		ids = MTaxCategory.getAllIDs(MTaxCategory.Table_Name, "isdefault = 'Y' and ad_client_id = " + Env.getAD_Client_ID(ctx), null);
-		product.setC_TaxCategory_ID(ids[0]);
+		if (bean.getTaxCategoryId() != null && bean.getTaxCategoryId() == 0) {
+			product.setC_TaxCategory_ID(bean.getTaxCategoryId());
+		} else {
+			int[] ids = MTaxCategory.getAllIDs(MTaxCategory.Table_Name, "isdefault = 'Y' and ad_client_id = " + Env.getAD_Client_ID(ctx), null);
+			product.setC_TaxCategory_ID(ids[0]);
+		}
 		
 		PoHandler.savePO(product);
 		
@@ -78,8 +92,9 @@ public class ProductManager {
 		PoHandler.savePO(price);
 	}
 
-	public static List<KeyNamePair> getUomList(Properties ctx) {
-		String sql = "select c_uom_id,name from c_uom where ad_client_id = " + Env.getAD_Client_ID(ctx) + " Order by isdefault desc ";
+	public static List<KeyNamePair> getKeyNamePairList(Properties ctx, String tableName) {
+		String sql = "select " + tableName + "_id,name from " + tableName + " where ad_client_id = " + 
+				Env.getAD_Client_ID(ctx) + " Order by isdefault desc ";
 		List<KeyNamePair> pair = new ArrayList<KeyNamePair>();
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
@@ -87,7 +102,7 @@ public class ProductManager {
 			stmt = DB.prepareStatement(sql, null);
 			rs = stmt.executeQuery();
 			while (rs != null && rs.next()) {
-				pair.add(new KeyNamePair(rs.getInt("c_uom_id"), rs.getString("name")));
+				pair.add(new KeyNamePair(rs.getInt(1), rs.getString(2)));
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -128,9 +143,15 @@ public class ProductManager {
 
 	public static List<Suggestion> getProductSuggestions(Properties ctx,
 			String text) {
-		String sql = "select m_product_id, description, case when lower(description) like lower(?) then 1 else 2 end as rank " +
-				" from m_product where ad_client_id = " + Env.getAD_Client_ID(ctx) +
-				" AND lower(description) like lower(?) order by rank, description ";
+		MPriceList pricelist = MPriceList.getDefault(ctx, true);
+		MPriceListVersion version = pricelist.getPriceListVersion(null);
+		String sql = "select p.m_product_id, p.description, pricestd,u.uomsymbol, "
+				+ "case when lower(p.description) like lower(?) then 1 else 2 end as rank "
+				+ " from m_product p join m_productprice pp on p.m_product_id = pp.m_product_id and pp.m_pricelist_version_id = " 
+				+ version.get_ID()
+				+ " JOIN c_uom u on p.c_uom_id = u.c_uom_id "
+				+ " where p.ad_client_id = " + Env.getAD_Client_ID(ctx) +
+				" AND lower(p.description) like lower(?) order by rank, p.description ";
 		List<Suggestion> list = new ArrayList<Suggestion>();
 		
 		PreparedStatement stmt = null;
@@ -144,6 +165,8 @@ public class ProductManager {
 				ProductBean bean = new ProductBean();
 				bean.setProductId(rs.getInt("m_product_id"));
 				bean.setDescription(rs.getString("description"));
+				bean.setSalesPrice(rs.getBigDecimal("pricestd"));
+				bean.setUomSymbol(rs.getString("uomsymbol"));
 				list.add(bean);
 			}
 		} catch (SQLException e) {
@@ -155,4 +178,54 @@ public class ProductManager {
 		return list;
 	}
 
+	public static List<ProductBean> searchProducts(Properties ctx, String code,
+			String description, Integer categoryId) {
+		MPriceList pricelist = MPriceList.getDefault(ctx, true);
+		MPriceListVersion version = pricelist.getPriceListVersion(null);
+		String sql = "select p.m_product_id,p.value, p.description, c.name, sum(qtyonhand-qtyreserved+qtyordered) as stockqty,pricestd "
+				+ " from m_product p join m_product_category c on p.m_product_category_id = c.m_product_category_id"
+				+ " join m_storage s on p.m_product_id = s.m_product_id "
+				+ " join m_productprice pp on p.m_product_id = pp.m_product_id and pp.m_pricelist_version_id = " 
+				+ version.get_ID()
+				+ " where p.ad_client_id = " + Env.getAD_Client_ID(ctx);
+		if (code != null && !code.trim().isEmpty()) {
+			sql+= " AND p.value = " + code;
+		}
+		if (description != null && !description.trim().isEmpty()) {
+			sql+= " AND lower(p.description) like '%" + description.toLowerCase() + "%'";
+		}
+		if (categoryId != null && categoryId != 0) {
+			sql+= " AND p.m_product_category_id = " + categoryId;
+		}
+		sql += " group by p.m_product_id, c.m_product_category_id, pricestd";
+		
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		List<ProductBean> list = new ArrayList<ProductBean>();;
+		try {
+			stmt = DB.prepareStatement(sql,null);
+			rs = stmt.executeQuery();
+			while (rs != null && rs.next()) {
+				ProductBean bean = new ProductBean();
+				bean.setProductId(rs.getInt("m_product_id"));
+				bean.setDescription(rs.getString("description"));
+				bean.setNewCategoryName(rs.getString("name"));
+				bean.setStockQty(rs.getBigDecimal("stockqty"));
+				bean.setProductCode(rs.getString("value"));
+				bean.setSalesPrice(rs.getBigDecimal("pricestd"));
+				list.add(bean);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DB.close(rs, stmt);
+		}
+		return list;
+	}
+
+	public static  int getNextProductCode(Properties ctx) {
+		return DB.getSQLValue(null, "select max(coalesce(value::numeric,0)) + 1 from m_product where value ~ '^[0-9\\.]+$' "
+				+ " and ad_client_id=" + Env.getAD_Client_ID(ctx)); 
+	}
+	
 }

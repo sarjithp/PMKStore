@@ -21,6 +21,7 @@ import com.pmk.shared.KeyNamePair;
 import com.pmk.shared.LoginUser;
 import com.pmk.shared.OperationException;
 import com.pmk.shared.OrderBean;
+import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
 import com.pmk.util.DBUtil;
 import com.pmk.util.POSEnv;
@@ -89,10 +90,10 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 	}
 
 	@Override
-	public List<KeyNamePair> getUomList() {
+	public List<KeyNamePair> getKeyNamePairList(String tableName) {
 		HttpServletRequest request = this.getThreadLocalRequest();
 		Properties ctx = POSEnv.getCtx(request);
-		return ProductManager.getUomList(ctx);
+		return ProductManager.getKeyNamePairList(ctx, tableName);
 	}
 
 	@Override
@@ -150,7 +151,7 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 	}
 
 	@Override
-	public void completeOrder(List<CartItem> items, OrderBean order) throws OperationException {
+	public OrderBean completeOrder(List<CartItem> items, OrderBean order) throws OperationException {
 		HttpServletRequest request = this.getThreadLocalRequest();
 		Properties ctx = POSEnv.getCtx(request);
 		String trxName = TrxPrefix.getPrefix();
@@ -167,6 +168,7 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 		} finally {
 			trx.close();
 		}
+		return order;
 	}
 
 	@Override
@@ -188,6 +190,62 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 		HttpServletRequest request = this.getThreadLocalRequest();
 		Properties ctx = POSEnv.getCtx(request);
 		return CustomerManager.getCustomerSuggestions(ctx,text);
+	}
+
+	@Override
+	public List<ProductBean> searchProducts(String code, String name,
+			Integer categoryId) {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return ProductManager.searchProducts(ctx,code,name,categoryId);
+	}
+
+	@Override
+	public int getNextProductCode() {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return ProductManager.getNextProductCode(ctx);
+	}
+
+	@Override
+	public void printOrder(int orderId) throws Exception {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		OrderManager.printOrder(ctx,orderId);
+	}
+
+	@Override
+	public List<OrderBean> loadPreviousOrders() {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return OrderManager.loadPreviousOrders(ctx);
+	}
+
+	@Override
+	public void savePrintSetup(PrintSetup setup) throws OperationException {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		String trxName = TrxPrefix.getPrefix();
+		Trx trx = null;
+		try {
+			trx = Trx.get(trxName, true);
+			trx.start();
+			OrderManager.savePrintSetup(ctx,setup, trxName);
+			trx.commit();
+		} catch (Exception e) {
+			trx.rollback();
+			e.printStackTrace();
+			throw new OperationException(e.getMessage());
+		} finally {
+			trx.close();
+		}
+	}
+
+	@Override
+	public PrintSetup loadPrintSetUp() {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return OrderManager.loadPrintSetup(ctx);
 	}
 	
 }

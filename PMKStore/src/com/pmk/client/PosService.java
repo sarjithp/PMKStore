@@ -12,6 +12,7 @@ import com.pmk.shared.KeyNamePair;
 import com.pmk.shared.LoginUser;
 import com.pmk.shared.OperationException;
 import com.pmk.shared.OrderBean;
+import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
 
 /**
@@ -24,7 +25,7 @@ public interface PosService extends RemoteService {
 
 	void saveProduct(ProductBean bean) throws OperationException;
 
-	List<KeyNamePair> getUomList();
+	List<KeyNamePair> getKeyNamePairList(String tableName);
 
 	CustomerBean loadCustomer(int salesCustomerId);
 
@@ -34,7 +35,7 @@ public interface PosService extends RemoteService {
 
 	ProductBean loadProduct(int productId, int priceListId);
 
-	void completeOrder(List<CartItem> items, OrderBean order) throws OperationException;
+	OrderBean completeOrder(List<CartItem> items, OrderBean order) throws OperationException;
 
 	List<OrderBean> getSalesHistory(long timelong, String paymentType);
 
@@ -46,6 +47,18 @@ public interface PosService extends RemoteService {
 
 	CartItem addProductToCartFromBarcode(String text, int priceListId,
 			int bpartnerId) throws OperationException;
+
+	List<ProductBean> searchProducts(String text, String text2, Integer value);
+
+	int getNextProductCode();
+
+	void printOrder(int lastCompletedOrderId) throws OperationException, Exception;
+
+	List<OrderBean> loadPreviousOrders();
+
+	void savePrintSetup(PrintSetup setup) throws OperationException;
+
+	PrintSetup loadPrintSetUp();
 
 
 }

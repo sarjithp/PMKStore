@@ -26,7 +26,7 @@ public class POSEnv {
 					ctx = new Properties();
 					setLanguage(ctx);
 					session.setAttribute(CTX, ctx);
-					session.setMaxInactiveInterval(60 * 60); // 30 Minutes
+					session.setMaxInactiveInterval(-1);
 				}
 			}
 		}

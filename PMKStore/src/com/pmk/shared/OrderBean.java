@@ -14,7 +14,14 @@ public class OrderBean implements IsSerializable {
 	private String customerName;
 	private String orderNo;
 	private BigDecimal grandTotal;
+	private int orderId;
 	
+	public int getOrderId() {
+		return orderId;
+	}
+	public void setOrderId(int orderId) {
+		this.orderId = orderId;
+	}
 	public String getCustomerName() {
 		return customerName;
 	}

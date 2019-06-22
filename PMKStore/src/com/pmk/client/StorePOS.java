@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import com.google.gwt.cell.client.ButtonCell;
+import com.google.gwt.cell.client.FieldUpdater;
 import com.google.gwt.cell.client.TextCell;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.dom.client.DivElement;
@@ -16,6 +18,7 @@ import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyDownEvent;
 import com.google.gwt.event.logical.shared.SelectionEvent;
 import com.google.gwt.event.logical.shared.SelectionHandler;
+import com.google.gwt.event.logical.shared.ValueChangeEvent;
 import com.google.gwt.uibinder.client.UiBinder;
 import com.google.gwt.uibinder.client.UiField;
 import com.google.gwt.uibinder.client.UiHandler;
@@ -37,6 +40,7 @@ import com.google.gwt.user.client.ui.Focusable;
 import com.google.gwt.user.client.ui.HasHorizontalAlignment;
 import com.google.gwt.user.client.ui.Hidden;
 import com.google.gwt.user.client.ui.ListBox;
+import com.google.gwt.user.client.ui.SimpleCheckBox;
 import com.google.gwt.user.client.ui.SuggestBox;
 import com.google.gwt.user.client.ui.SuggestOracle;
 import com.google.gwt.user.client.ui.TextBox;
@@ -48,12 +52,14 @@ import com.google.gwt.view.client.SelectionChangeEvent;
 import com.google.gwt.view.client.SingleSelectionModel;
 import com.pmk.client.widgets.BigDecimalBox;
 import com.pmk.client.widgets.CustomerSuggestionOracle;
+import com.pmk.client.widgets.IntegerListBox;
 import com.pmk.client.widgets.ProductSuggestOracle;
-import com.pmk.client.widgets.UomListBox;
+import com.pmk.client.widgets.KeyNamePairListBox;
 import com.pmk.shared.CartItem;
 import com.pmk.shared.CustomerBean;
 import com.pmk.shared.LoginUser;
 import com.pmk.shared.OrderBean;
+import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
 
 public class StorePOS extends Composite {
@@ -125,6 +131,20 @@ public class StorePOS extends Composite {
 		initCartTable();
 		initSalesHistoryDataTable();
 		initSuggestBoxes();
+		initProductListingTable();
+	}
+	
+	private void addToCartFromProductId(int productId) {
+		service.addProductToCart(productId, user.getPriceListId(), getCustomerID(), new AsyncCallback<CartItem>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				displayErrorMesasge(caught.getMessage(), barcode);
+			}
+			@Override
+			public void onSuccess(CartItem result) {
+				addOrUpdateDataList(result);
+			}
+		});
 	}
 	
 	private void initSuggestBoxes() {
@@ -135,16 +155,8 @@ public class StorePOS extends Composite {
 			public void onSelection(SelectionEvent<Suggestion> event) {
 				ProductBean bean = (ProductBean) event.getSelectedItem();
 				if (bean.getProductId() != 0) {
-					service.addProductToCart(bean.getProductId(), user.getPriceListId(), getCustomerID(), new AsyncCallback<CartItem>() {
-						@Override
-						public void onFailure(Throwable caught) {
-							displayErrorMesasge(caught.getMessage(), barcode);
-						}
-						@Override
-						public void onSuccess(CartItem result) {
-							addOrUpdateDataList(result);
-						}
-					});
+					addToCartFromProductId(bean.getProductId());
+					addedFromBarcode = false;
 				}
 			}
 		});
@@ -301,7 +313,16 @@ public class StorePOS extends Composite {
 				} else if(ne.getCtrlKey()&&ne.getKeyCode()==KeyCodes.KEY_DELETE){//Ctrl+DEL - Clear
 		           	ne.preventDefault();
 		           	clearAll(null);
-		         } 
+		        } else if(ne.getCtrlKey()&&ne.getKeyCode()=='P'){//Ctrl+P - print
+		           	ne.preventDefault();
+		           	if (successPopup.isShowing()) {
+		           		successPopupPrintBtn(null);
+		           	} else if (printOrderPopup.isShowing()) {
+		           		printOrderOKBtn(null);
+		           	} else {
+		           		printOrder(null);
+		           	}
+		        } 
 				
 			}
 		});
@@ -326,11 +347,14 @@ public class StorePOS extends Composite {
 				@Override
 				public void onSuccess(LoginUser result) {
 					loginPopup.hide();
+					settingsBtn.setVisible(result.getUserName().equalsIgnoreCase("admin"));
 					uomListBox.refresh();
+					productListCategory.refresh();
+					taxCategoryId.refresh();
+					categoryId.refresh();
 					userName.setText(result.getUserName());
 					user = result;
 					barcode.setFocus(true);
-					salesHistory.setVisible("Abdul Salam".equalsIgnoreCase(result.getUserName()));
 				}
 			});
 		}
@@ -340,22 +364,28 @@ public class StorePOS extends Composite {
 	
 	@UiField
 	TextBox barcode, grantTotalBox, userpin, userName, updateProductCode, updateProductDescription, customerCode, customerName, customerAddress,
-	customerPhone, customerBalance, totalCountBox;
+	customerPhone, customerBalance, totalCountBox, newCategoryName, productListCode, productListDescr, printDevice, printWidth;
 	
 	@UiField
 	BigDecimalBox updateProductSalesPrice,updateProductLimitPrice, qtyBox, priceBox, updateProductPurchasePrice, customerPayAmt;
 	
 	@UiField
-	UomListBox uomListBox;
+	KeyNamePairListBox uomListBox, taxCategoryId, categoryId, productListCategory;
+	
+	@UiField
+	IntegerListBox orderNoList;
 	
 	@UiField
 	Hidden updateProductId, customerId;
 	
 	@UiField
-	ListBox saleTypeList, historySaleTypeList;
+	ListBox saleTypeList, historySaleTypeList, printTypeList;
 	
 	@UiField
 	SpanElement userpinErrorMsg;
+	
+	@UiField
+	SimpleCheckBox newCategory, autoProductCode;
 	
 	private int getCustomerID() {
 		if (salesCustomerId > 0) {
@@ -364,6 +394,8 @@ public class StorePOS extends Composite {
 		return user.getCashCustomerId();
 	}
 
+	boolean addedFromBarcode = true;
+	
 	@UiHandler("barcode")
 	void onbarcode(KeyDownEvent e) {
 		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER && !barcode.getText().trim().isEmpty()) {
@@ -376,6 +408,7 @@ public class StorePOS extends Composite {
 				public void onSuccess(CartItem result) {
 					loadingPopup.hide();
 					addOrUpdateDataList(result);
+					addedFromBarcode = true;
 				};
 			});
 			barcode.setText("");
@@ -415,28 +448,29 @@ public class StorePOS extends Composite {
 	void priceUpdate(KeyDownEvent e) {
 		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER && !priceBox.getText().trim().isEmpty()) {
 			CartItem item = selectionModel.getSelectedObject();
-			BigDecimal price = new BigDecimal(priceBox.getText());
+			BigDecimal price = priceBox.getValue();
 			if (item != null && price.compareTo(item.getInclPrice()) != 0) {
 				item.setInclPrice(price);
 				dataList.flush();
 				dataList.refresh();
 			}
-			barcode.setFocus(true);
+			(addedFromBarcode ? barcode : description).setFocus(true);
 		}
 	}
 	
 	Focusable defaultFocus = null;
 	int salesCustomerId = 0;
+	int lastCompletedOrderId = 0;
 	
 	@UiField 
-	Button errorCloseBtn, generalSuccessPopupCloseBtn, successPopupCloseBtn, salesHistory;
+	Button errorCloseBtn, generalSuccessPopupCloseBtn, successPopupCloseBtn, salesHistory, printOrderOKBtn,settingsBtn;
 	
 	@UiField 
 	DivElement errorMsg, generralSuccessMsg;
 	
 	@UiField
 	DialogBox errorPopup, successPopup, loginPopup, updateProductPopup, generalSuccessPopup, loadingPopup, customerPopup, customerPaymentPopup,
-	salesHistoryPopup;
+	salesHistoryPopup, productListPopup, printOrderPopup, settingsPopup;
 	
 	protected void displayErrorMesasge(String message, Focusable focus) {
 		errorPopup.center();
@@ -464,6 +498,7 @@ public class StorePOS extends Composite {
 		saleTypeList.setSelectedIndex(0);
 		customerBalance.setValue("0");
 		customerSuggest.setText("");
+		lastCompletedOrderId = 0;
 	}
 	
 	private OrderBean setOrderDetails() {
@@ -484,21 +519,76 @@ public class StorePOS extends Composite {
 		List<CartItem> items = new ArrayList<CartItem>();
 		items.addAll(dataList.getList());
 		loadingPopup.center();
-		service.completeOrder(items, setOrderDetails(), new AsyncCallback<Void>() {
+		service.completeOrder(items, setOrderDetails(), new AsyncCallback<OrderBean>() {
 			@Override
 			public void onFailure(Throwable caught) {
 				loadingPopup.hide();
 				displayErrorMesasge(caught.getMessage(), barcode);
 			}
 			@Override
-			public void onSuccess(Void result) {
+			public void onSuccess(OrderBean order) {
 				loadingPopup.hide();
 				successPopup.center();
 				successPopupCloseBtn.setFocus(true);
+				lastCompletedOrderId = order.getOrderId();
 			}
 		});
 	}
 	
+	@UiHandler("successPopupPrintBtn")
+	void successPopupPrintBtn(ClickEvent e) {
+		if (lastCompletedOrderId != 0) {
+			service.printOrder(lastCompletedOrderId, new AsyncCallback<Void>() {
+				@Override
+				public void onFailure(Throwable caught) {
+					displayErrorMesasge(caught.getMessage(), barcode);
+				}
+				@Override
+				public void onSuccess(Void result) {
+					successPopup.hide();
+					clearAll(null);
+				}
+			});
+		}
+	}
+	
+	@UiHandler("printOrderBtn")
+	void printOrder(ClickEvent e) {
+		loadingPopup.center();
+		service.loadPreviousOrders(new AsyncCallback<List<OrderBean>>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				displayErrorMesasge(caught.getMessage(), defaultFocus);
+			}
+			@Override
+			public void onSuccess(List<OrderBean> result) {
+				for(OrderBean bean : result) {
+					orderNoList.addItem(bean.getOrderNo() + "  (Total : " + bean.getGrandTotal() + ")", String.valueOf(bean.getOrderId()));
+				}
+				loadingPopup.hide();
+				printOrderPopup.center();
+				printOrderOKBtn.setFocus(true);
+			}
+		});
+	}
+	
+	@UiHandler("printOrderOKBtn")
+	void printOrderOKBtn(ClickEvent e) {
+		if (orderNoList.getValue() != null && orderNoList.getValue() > 0) {
+			service.printOrder(orderNoList.getValue(), new AsyncCallback<Void>() {
+				@Override
+				public void onFailure(Throwable caught) {
+					displayErrorMesasge(caught.getMessage(), barcode);
+				}
+				@Override
+				public void onSuccess(Void result) {
+					printOrderPopup.hide();
+					barcode.setFocus(true);
+				}
+			});
+		}
+	}
+
 	@UiHandler("successPopupCloseBtn")
 	void newOrder(ClickEvent e) {
 		successPopup.hide();
@@ -515,20 +605,25 @@ public class StorePOS extends Composite {
 	void editProduct(ClickEvent e) {
 		CartItem item = selectionModel.getSelectedObject();
 		if (item != null && item.getProductId() != 0) {
-			loadingPopup.center();
-			service.loadProduct(item.getProductId(),user.getPriceListId(), new AsyncCallback<ProductBean>() {
-				@Override
-				public void onFailure(Throwable caught) {
-					loadingPopup.hide();
-					displayErrorMesasge(caught.getMessage(), barcode);
-				}
-				@Override
-				public void onSuccess(ProductBean result) {
-					loadingPopup.hide();
-					initEditProduct(result);
-				}
-			});
+			editProduct(item.getProductId());
 		}
+	}
+	
+	void editProduct(int productId) {
+		loadingPopup.center();
+		service.loadProduct(productId,user.getPriceListId(), new AsyncCallback<ProductBean>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				loadingPopup.hide();
+				displayErrorMesasge(caught.getMessage(), barcode);
+			}
+			@Override
+			public void onSuccess(ProductBean result) {
+				loadingPopup.hide();
+				initEditProduct(result);
+			}
+		});
+		
 	}
 	
 	@UiHandler("updateProductPopupCancel") 
@@ -547,6 +642,10 @@ public class StorePOS extends Composite {
 		bean.setLimitPrice(updateProductLimitPrice.getValue());
 		bean.setUomId(uomListBox.getValue());
 		bean.setPriceListId(user.getPriceListId());
+		bean.setCategoryId(categoryId.getValue());
+		bean.setCreateNewCategory(newCategory.getValue());
+		bean.setNewCategoryName(newCategoryName.getText());
+		bean.setTaxCategoryId(taxCategoryId.getValue());
 		loadingPopup.center();
 		service.saveProduct(bean, new AsyncCallback<Void>() {
 			@Override
@@ -574,9 +673,45 @@ public class StorePOS extends Composite {
 		if (result.getUomId() != null && result.getUomId() != 0) {
 			uomListBox.setValue(result.getUomId());
 		}
+		if (result.getCategoryId() != null && result.getCategoryId() != 0) {
+			categoryId.setValue(result.getCategoryId());
+		}
+		if (result.getTaxCategoryId() != null && result.getTaxCategoryId() != 0) {
+			taxCategoryId.setValue(result.getTaxCategoryId());
+		}
+		newCategory.setValue(false,true);
+		categoryId.setVisible(true);
+		newCategoryName.setVisible(false);
 		updateProductCode.setFocus(true);
+		if (autoProductCode.getValue()) {
+			getAutoProductCode();
+			updateProductDescription.setFocus(true);
+		}
 	}
 
+	@UiHandler("newCategory")
+	void newCategory(ValueChangeEvent<Boolean> e) {
+		categoryId.setVisible(!e.getValue());
+		newCategoryName.setVisible(e.getValue());
+	}
+	
+	@UiHandler("autoProductCode")
+	void autoProductCode(ValueChangeEvent<Boolean> e) {
+		if (e.getValue()) {
+			getAutoProductCode();
+		}
+	}
+	void getAutoProductCode() {
+		service.getNextProductCode(new AsyncCallback<Integer>() {
+			@Override
+			public void onFailure(Throwable caught) {
+			}
+			public void onSuccess(Integer result) {
+				updateProductCode.setText(String.valueOf(result));
+			};
+		});
+	}
+	
 	protected void initEditCustomer(CustomerBean result) {
 		customerPopup.center();
 		customerId.setValue(String.valueOf(result.getCustomerId()));
@@ -703,12 +838,16 @@ public class StorePOS extends Composite {
 	
 	@UiField(provided=true)
 	CellTable<OrderBean> salesHistoryTable = null;
-	ListDataProvider<OrderBean> salesDataList = new ListDataProvider<OrderBean>();
+	@UiField(provided=true)
+	CellTable<ProductBean> productListTable = null;
 	@UiField(provided = true)
-	SimplePager pager;
+	SimplePager pager, productPager;
 	
+	ListDataProvider<OrderBean> salesDataList = new ListDataProvider<OrderBean>();
+	ListDataProvider<ProductBean> productList = new ListDataProvider<ProductBean>();
+
 	private void initSalesHistoryDataTable() {
-		salesHistoryTable = new CellTable<OrderBean>(10);
+		salesHistoryTable = new CellTable<OrderBean>(25);
 		Column<OrderBean, String> column = new TextColumn<OrderBean>() {
 			@Override
 			public String getValue(OrderBean object) {
@@ -749,7 +888,88 @@ public class StorePOS extends Composite {
 		SimplePager.Resources pagerResources = GWT.create(SimplePager.Resources.class);
 		pager = new SimplePager(TextLocation.CENTER, pagerResources, true, 0,true);
 		pager.setDisplay(salesHistoryTable);
-		pager.setPageSize(10);
+		pager.setPageSize(25);
+	}
+		
+		
+	private void initProductListingTable(){
+		//setting product list table
+		productListTable = new CellTable<ProductBean>(25);
+		Column<ProductBean,String> productColumn = new TextColumn<ProductBean>() {
+			@Override
+			public String getValue(ProductBean object) {
+				return object.getNewCategoryName();
+			}
+		};
+		productListTable.addColumn(productColumn, "Category");
+		
+		productColumn = new TextColumn<ProductBean>() {
+			@Override
+			public String getValue(ProductBean object) {
+				return object.getProductCode();
+			}
+		};
+		productListTable.addColumn(productColumn, "Code");
+		
+		productColumn = new TextColumn<ProductBean>() {
+			@Override
+			public String getValue(ProductBean object) {
+				return object.getDescription();
+			}
+		};
+		productListTable.addColumn(productColumn, "Description");
+		
+		productColumn = new TextColumn<ProductBean>() {
+			@Override
+			public String getValue(ProductBean object) {
+				return String.valueOf(object.getSalesPrice());
+			}
+		};
+		productListTable.addColumn(productColumn, "Price");
+		
+		productColumn = new TextColumn<ProductBean>() {
+			@Override
+			public String getValue(ProductBean object) {
+				return String.valueOf(object.getStockQty());
+			}
+		};
+		productListTable.addColumn(productColumn, "Stock Qty");
+		
+		productColumn = new Column<ProductBean,String>(new ButtonCell()) {
+			@Override
+			public String getValue(ProductBean object) {
+				return "EDIT";
+			}
+		};
+		productListTable.addColumn(productColumn, "Edit");
+		productColumn.setFieldUpdater(new FieldUpdater<ProductBean, String>() {
+			@Override
+			public void update(int index, ProductBean object, String value) {
+				editProduct(object.getProductId());
+			}
+		});
+		
+		productColumn = new Column<ProductBean,String>(new ButtonCell()) {
+			@Override
+			public String getValue(ProductBean object) {
+				return "ADD TO CART";
+			}
+		};
+		productListTable.addColumn(productColumn, "Add to Cart");
+		productColumn.setFieldUpdater(new FieldUpdater<ProductBean, String>() {
+			@Override
+			public void update(int index, ProductBean object, String value) {
+				addToCartFromProductId(object.getProductId());
+				productListPopup.hide();
+			}
+		});
+		
+		productList.addDataDisplay(productListTable);
+		
+		SimplePager.Resources pagerResources = GWT.create(SimplePager.Resources.class);
+		productPager = new SimplePager(TextLocation.CENTER, pagerResources, true, 0,true);
+		productPager.setDisplay(productListTable);
+		productPager.setPageSize(25);
 	}
 	
 	@UiHandler("salesHistory")
@@ -772,6 +992,7 @@ public class StorePOS extends Composite {
 			@Override
 			public void onSuccess(List<OrderBean> result) {
 				salesDataList.getList().addAll(result);
+				salesHistoryPopup.center();
 			}
 		});
 	}
@@ -779,5 +1000,103 @@ public class StorePOS extends Composite {
 	@UiHandler("salesHistoryCloseBtn")
 	void salesHistoryClose(ClickEvent e) {
 		salesHistoryPopup.hide();
+	}
+	
+	@UiHandler("productListCode")
+	void productListCode(KeyDownEvent e) {
+		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+			productListSubmit(null);
+		}
+	}
+	
+	@UiHandler("productListDescr")
+	void productListName(KeyDownEvent e) {
+		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+			productListSubmit(null);
+		}
+	}
+	
+	@UiHandler("listProductBtn")
+	void listProductBtn(ClickEvent e) {
+		productListPopup.center();
+	}
+	
+	@UiHandler("productListSubmit")
+	void productListSubmit(ClickEvent e) {
+		loadingPopup.center();
+		productList.getList().clear();
+		productList.flush();
+		service.searchProducts(productListCode.getText(), productListDescr.getText(), productListCategory.getValue(), 
+				new AsyncCallback<List<ProductBean>>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				loadingPopup.hide();
+				displayErrorMesasge(caught.getMessage(), productListCode);
+			}
+			@Override
+			public void onSuccess(List<ProductBean> result) {
+				productList.getList().addAll(result);
+				productList.flush();
+				loadingPopup.hide();
+				productListPopup.center();
+			}
+		});
+	}
+	
+	@UiHandler("productListCloseBtn")
+	void productListCloseBtn(ClickEvent e) {
+		productListPopup.hide();
+		barcode.setFocus(true);
+	}
+	
+	@UiHandler("settingsBtn")
+	void settingsBtn(ClickEvent e){
+		service.loadPrintSetUp(new AsyncCallback<PrintSetup>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				displayErrorMesasge(caught.getMessage(), null);
+			}
+			public void onSuccess(PrintSetup result) {
+				settingsPopup.center();
+				printWidth.setText(result.getPrintWidth());
+				printDevice.setText(result.getPrintDevice());
+				if (result.getPrintType().equalsIgnoreCase(Constants.PRINT_TYPE_VALUE_SLIP)) {
+					printTypeList.setSelectedIndex(0);
+				} else {
+					printTypeList.setSelectedIndex(1);
+				}
+			};
+		});
+	}
+	
+	@UiHandler("settingsCancel")
+	void settingsCancel(ClickEvent e) {
+		settingsPopup.hide();
+	}
+	@UiHandler("settingsOKBtn")
+	void settingsOKBtn(ClickEvent e) {
+		PrintSetup setup = new PrintSetup();
+		setup.setPrintDevice(printDevice.getText());
+		setup.setPrintWidth(printWidth.getText());
+		setup.setPrintType(printTypeList.getValue(printTypeList.getSelectedIndex()));
+		loadingPopup.center();
+		service.savePrintSetup(setup, new AsyncCallback<Void>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				loadingPopup.hide();
+				displayErrorMesasge(caught.getMessage(), printDevice);
+			}
+			@Override
+			public void onSuccess(Void result) {
+				loadingPopup.hide();
+				displaySuccessMsg("settings saved successully", barcode);
+				settingsPopup.hide();
+			}
+		});
+	}
+	
+	@UiHandler("printOrderCancel")
+	void printOrderCancel(ClickEvent e) {
+		printOrderPopup.hide();
 	}
 }

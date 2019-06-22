@@ -5,8 +5,6 @@ import java.util.List;
 import com.google.gwt.core.client.GWT;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.google.gwt.user.client.ui.SuggestOracle;
-import com.google.gwt.user.client.ui.SuggestOracle.Response;
-import com.google.gwt.user.client.ui.SuggestOracle.Suggestion;
 import com.pmk.client.PosService;
 import com.pmk.client.PosServiceAsync;
 import com.pmk.shared.ProductBean;
@@ -21,7 +19,7 @@ public class ProductSuggestOracle extends SuggestOracle {
 	@Override
 	public void requestSuggestions(final Request request, final Callback callback) {
 		String text = request.getQuery();
-		if (text.trim().length() > 2) {
+		if (text.trim().length() >= 2) {
 			service.getProductSuggestions(text.trim(),
 					new AsyncCallback<List<Suggestion>>() {
 						@Override
@@ -43,5 +41,10 @@ public class ProductSuggestOracle extends SuggestOracle {
 						}
 					});
 		}
+	}
+	
+	@Override
+	public boolean isDisplayStringHTML() {
+		return true;
 	}
 }

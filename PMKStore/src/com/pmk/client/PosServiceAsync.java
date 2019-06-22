@@ -10,6 +10,7 @@ import com.pmk.shared.CustomerBean;
 import com.pmk.shared.KeyNamePair;
 import com.pmk.shared.LoginUser;
 import com.pmk.shared.OrderBean;
+import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
 
 /**
@@ -27,7 +28,7 @@ public interface PosServiceAsync {
 
 	void saveProduct(ProductBean bean, AsyncCallback<Void> asyncCallback);
 
-	void getUomList(AsyncCallback<List<KeyNamePair>> asyncCallback);
+	void getKeyNamePairList(String tableName, AsyncCallback<List<KeyNamePair>> asyncCallback);
 
 	void loadProduct(int productId, int priceListId,
 			AsyncCallback<ProductBean> asyncCallback);
@@ -41,7 +42,7 @@ public interface PosServiceAsync {
 			AsyncCallback<Void> asyncCallback);
 
 	void completeOrder(List<CartItem> items, OrderBean order,
-			AsyncCallback<Void> asyncCallback);
+			AsyncCallback<OrderBean> asyncCallback);
 
 	void getSalesHistory(long timelong,
 			String paymentType, AsyncCallback<List<OrderBean>> asyncCallback);
@@ -52,6 +53,17 @@ public interface PosServiceAsync {
 	void getCustomerSuggestions(String trim,
 			AsyncCallback<List<Suggestion>> asyncCallback);
 
+	void searchProducts(String text, String text2, Integer value,
+			AsyncCallback<List<ProductBean>> asyncCallback);
 
+	void getNextProductCode(AsyncCallback<Integer> asyncCallback);
+
+	void printOrder(int lastCompletedOrderId, AsyncCallback<Void> asyncCallback);
+
+	void loadPreviousOrders(AsyncCallback<List<OrderBean>> asyncCallback);
+
+	void savePrintSetup(PrintSetup setup, AsyncCallback<Void> asyncCallback);
+
+	void loadPrintSetUp(AsyncCallback<PrintSetup> asyncCallback);
 
 }

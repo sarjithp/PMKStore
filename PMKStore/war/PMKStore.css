@@ -59,6 +59,9 @@
 	text-align: right !important;
 }
 .actionBtn {
-	width : 100px;
+	width : 85px;
 	text-transform: capitalize;
+}
+.input100 {
+	width: 100px;
 }

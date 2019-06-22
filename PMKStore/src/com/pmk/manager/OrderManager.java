@@ -1,32 +1,40 @@
 package com.pmk.manager;
 
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.math.BigDecimal;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
+import net.sf.jasperreports.engine.JRExporter;
+import net.sf.jasperreports.engine.JRExporterParameter;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.export.JRPdfExporter;
+
 import org.compiere.model.MDocType;
-import org.compiere.model.MInOut;
-import org.compiere.model.MInOutLine;
-import org.compiere.model.MInvoice;
-import org.compiere.model.MInvoiceLine;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
-import org.compiere.model.MPayment;
 import org.compiere.model.MProduct;
 import org.compiere.model.MProductPrice;
-import org.compiere.model.MProductPricing;
+import org.compiere.model.MSysConfig;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 
+import com.pmk.client.Constants;
 import com.pmk.shared.CartItem;
 import com.pmk.shared.OperationException;
 import com.pmk.shared.OrderBean;
+import com.pmk.shared.PrintSetup;
+import com.pmk.util.PMKPrintformat;
 import com.pmk.util.PoHandler;
 
 public class OrderManager {
@@ -51,7 +59,7 @@ public class OrderManager {
 		return item;
 	}
 
-	public static void completeOrder(Properties ctx, OrderBean bean,
+	public static OrderBean completeOrder(Properties ctx, OrderBean bean,
 			List<CartItem> items, String trxName) throws OperationException {
 		MOrder order = new MOrder(ctx,0, trxName);
 		order.setC_BPartner_ID(bean.getCustomerId());
@@ -124,6 +132,9 @@ public class OrderManager {
 			invoice.setC_Payment_ID(payment.get_ID());
 			PoHandler.savePO(payment);
 		}*/
+		
+		bean.setOrderId(order.get_ID());
+		return bean;
 	}
 
 	public static List<OrderBean> getSalesHistory(Properties ctx, long date, String paymentType) {
@@ -156,6 +167,135 @@ public class OrderManager {
 			DB.close(rs, stmt);
 		}
 		return list;
+	}
+
+	public static List<OrderBean> loadPreviousOrders(Properties ctx) {
+		String sql = "select * from (select c_order_id, documentno, grandtotal, rank() OVER (order by created desc) "
+				+ " from c_order where ad_client_id = " + Env.getAD_Client_ID(ctx)
+				+ " and docstatus in ('CO','CL') and created > current_date order by created desc) as innertable where rank <= 10 ";
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		List<OrderBean> list = new ArrayList<OrderBean>();
+		try {
+			stmt = DB.prepareStatement(sql, null);
+			rs = stmt.executeQuery();
+			while (rs != null && rs.next()) {
+				OrderBean bean = new OrderBean();
+				bean.setOrderId(rs.getInt("c_order_id"));
+				bean.setOrderNo(rs.getString("documentno"));
+				bean.setGrandTotal(rs.getBigDecimal("grandtotal"));
+				list.add(bean);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DB.close(rs, stmt);
+		}
+		return list;
+	}
+
+	public static void printOrder(Properties ctx, int orderId) throws Exception {
+		String printType = MSysConfig.getValue(Constants.PRINT_TYPE,null, Env.getAD_Client_ID(ctx));
+		if (printType != null && Constants.PRINT_TYPE_VALUE_SLIP.equalsIgnoreCase(printType)) {//slip printing
+			String printDevice = MSysConfig.getValue(Constants.PRINT_DEVICE,null, Env.getAD_Client_ID(ctx));
+			if (printDevice == null || printDevice.trim().isEmpty()) {
+				throw new OperationException("Printer is not defined");
+			}
+			MOrder order = new MOrder(ctx, orderId, null);
+			PMKPrintformat format = new PMKPrintformat();
+			FileWriter writer = null;
+			try {
+				String print = format.formatOrder(ctx, order);
+				writer = new FileWriter(printDevice);
+				writer.write(print);
+				writer.flush();
+			} catch (Exception e) {
+				e.printStackTrace();
+			} finally {
+				if (writer != null)
+					writer.close();
+			}
+		} else {//a4 printing
+			Connection connection = null;
+			try {
+			
+				String reportName = "myreport";
+				Map<String, Object> parameters = new HashMap<String, Object>();
+				connection = DB.getConnectionRO();
+
+				// compiles jrxml
+				JasperCompileManager.compileReportToFile(reportName + ".jrxml");
+				// fills compiled report with parameters and a connection
+				JasperPrint print = JasperFillManager.fillReport(reportName + ".jasper", parameters, connection);
+				// exports report to pdf
+				JRPdfExporter exporter = new JRPdfExporter();
+				exporter.setParameter(JRExporterParameter.JASPER_PRINT, print);
+				exporter.setParameter(JRExporterParameter.OUTPUT_STREAM, new FileOutputStream(reportName + ".pdf")); // your output goes here
+				
+				exporter.exportReport();
+
+			} catch (Exception e) {
+				throw new RuntimeException("It's not possible to generate the pdf report.", e);
+			} finally {
+				
+			}
+		}
+		
+	}
+
+	public static PrintSetup loadPrintSetup(Properties ctx) {
+		PrintSetup setup = new PrintSetup();
+		setup.setPrintDevice(MSysConfig.getValue(Constants.PRINT_DEVICE,null, Env.getAD_Client_ID(ctx)));
+		setup.setPrintWidth(MSysConfig.getValue(Constants.PRINT_LINE_WIDTH, "40", Env.getAD_Client_ID(ctx)));
+		setup.setPrintType(MSysConfig.getValue(Constants.PRINT_TYPE, Constants.PRINT_TYPE_VALUE_SLIP, Env.getAD_Client_ID(ctx)));
+		return setup;
+	}
+
+	public static void savePrintSetup(Properties ctx, PrintSetup setup,
+			String trxName) throws OperationException {
+		int[] ids = MSysConfig.getAllIDs(MSysConfig.Table_Name, "name = '" + Constants.PRINT_DEVICE + "' and ad_client_id = " + Env.getAD_Client_ID(ctx), 
+				trxName);
+		MSysConfig config = null;
+		if (ids == null || ids.length == 0) {
+			config = new MSysConfig(ctx, 0, trxName);
+			config.setName(Constants.PRINT_DEVICE);
+			config.setConfigurationLevel(MSysConfig.CONFIGURATIONLEVEL_Client);
+			config.setValue(setup.getPrintDevice());
+			config.setAD_Org_ID(0);
+		} else {
+			config = new MSysConfig(ctx, ids[0], trxName);
+			config.setValue(setup.getPrintDevice());
+		}
+		PoHandler.savePO(config);
+		
+		ids = MSysConfig.getAllIDs(MSysConfig.Table_Name, "name = '" + Constants.PRINT_LINE_WIDTH + "' and ad_client_id = " + Env.getAD_Client_ID(ctx), 
+				trxName);
+		if (ids == null || ids.length == 0) {
+			config = new MSysConfig(ctx, 0, trxName);
+			config.setName(Constants.PRINT_LINE_WIDTH);
+			config.setConfigurationLevel(MSysConfig.CONFIGURATIONLEVEL_Client);
+			config.setValue(setup.getPrintWidth());
+			config.setAD_Org_ID(0);
+		} else {
+			config = new MSysConfig(ctx, ids[0], trxName);
+			config.setValue(setup.getPrintWidth());
+		}
+		PoHandler.savePO(config);
+		
+		ids = MSysConfig.getAllIDs(MSysConfig.Table_Name, "name = '" + Constants.PRINT_TYPE + "' and ad_client_id = " + Env.getAD_Client_ID(ctx), 
+				trxName);
+		if (ids == null || ids.length == 0) {
+			config = new MSysConfig(ctx, 0, trxName);
+			config.setName(Constants.PRINT_TYPE);
+			config.setConfigurationLevel(MSysConfig.CONFIGURATIONLEVEL_Client);
+			config.setValue(setup.getPrintType());
+			config.setAD_Org_ID(0);
+		} else {
+			config = new MSysConfig(ctx, ids[0], trxName);
+			config.setValue(setup.getPrintWidth());
+		}
+		PoHandler.savePO(config);
+		MSysConfig.resetCache();
 	}
 
 }

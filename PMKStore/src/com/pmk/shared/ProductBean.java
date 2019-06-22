@@ -4,6 +4,7 @@
 package com.pmk.shared;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import com.google.gwt.user.client.rpc.IsSerializable;
 import com.google.gwt.user.client.ui.SuggestOracle.Suggestion;
@@ -20,12 +21,52 @@ public class ProductBean implements IsSerializable, Suggestion {
 	private int productId;
 	private String productCode;
 	private String description;
-	private Integer uomId;
+	private Integer uomId, categoryId, taxCategoryId;
 	private BigDecimal salesPrice;
 	private BigDecimal limitPrice;
 	private BigDecimal purchasePrice;
 	private int priceListId;
+	private boolean createNewCategory;
+	private String newCategoryName;
+	private BigDecimal stockQty;
+	private String uomSymbol;
 	
+	public String getUomSymbol() {
+		return uomSymbol;
+	}
+	public void setUomSymbol(String uomSymbol) {
+		this.uomSymbol = uomSymbol;
+	}
+	public BigDecimal getStockQty() {
+		return stockQty;
+	}
+	public void setStockQty(BigDecimal stockQty) {
+		this.stockQty = stockQty;
+	}
+	public boolean isCreateNewCategory() {
+		return createNewCategory;
+	}
+	public void setCreateNewCategory(boolean createNewCategory) {
+		this.createNewCategory = createNewCategory;
+	}
+	public String getNewCategoryName() {
+		return newCategoryName;
+	}
+	public void setNewCategoryName(String newCategoryName) {
+		this.newCategoryName = newCategoryName;
+	}
+	public Integer getCategoryId() {
+		return categoryId;
+	}
+	public void setCategoryId(Integer categoryId) {
+		this.categoryId = categoryId;
+	}
+	public Integer getTaxCategoryId() {
+		return taxCategoryId;
+	}
+	public void setTaxCategoryId(Integer taxCategoryId) {
+		this.taxCategoryId = taxCategoryId;
+	}
 	public int getPriceListId() {
 		return priceListId;
 	}
@@ -77,12 +118,14 @@ public class ProductBean implements IsSerializable, Suggestion {
 	}
 	@Override
 	public String getDisplayString() {
-		return description;
+		String displayString = description;
+		if (salesPrice != null) {
+			displayString += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + salesPrice.setScale(2, RoundingMode.HALF_UP) + "/" + uomSymbol;
+		}
+		return displayString;
 	}
 	@Override
 	public String getReplacementString() {
 		return "";
 	}
-	
-	
 }

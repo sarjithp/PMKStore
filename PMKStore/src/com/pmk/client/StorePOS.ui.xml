@@ -5,7 +5,7 @@
 	xmlns:p="urn:import:com.pmk.client.widgets"
 	xmlns:d="urn:import:com.google.gwt.user.datepicker.client">
 	<g:HTMLPanel>
-		<table><tr><td width="80%">
+		<table><tr><td width="75%">
 			<table>
 				<tr>
 					<td nowrap="">User : </td>
@@ -48,6 +48,9 @@
 				<tr>
 					<td colspan="8">
 						<div style="float:right">
+							<g:Button styleName="completeButton" ui:field="printOrderBtn">
+								PRINT ORDER
+							</g:Button>
 							<g:Button styleName="completeButton" ui:field="clearAllBtn">
 								CLEAR ALL
 							</g:Button>
@@ -61,19 +64,22 @@
 				</tr>
 			</table>
 		</td>
-		<td width="20%">
+		<td width="25%">
 			<table >
 				<tr>
 					<td><g:Button ui:field="addProductBtn" styleName="actionBtn">ADD PRODUCT</g:Button></td>
 					<td><g:Button ui:field="editProductBtn" styleName="actionBtn">EDIT PRODUCT</g:Button></td>
+					<td><g:Button ui:field="listProductBtn" styleName="actionBtn">PRODUCT LIST</g:Button></td>
 				</tr>
 				<tr>
 					<td><g:Button ui:field="addCustomterBtn" styleName="actionBtn">ADD CUSTOMER</g:Button></td>
 					<td><g:Button ui:field="editCustomterBtn" styleName="actionBtn">EDIT CUSTOMER</g:Button></td>
+					<td><g:Button ui:field="listCustomterBtn" styleName="actionBtn">CUSTOMER LIST</g:Button></td>
 				</tr>
 				<tr>
 					<td><g:Button ui:field="customerPay" styleName="actionBtn">CUSTOMER PAY</g:Button></td>
 					<td><g:Button ui:field="salesHistory" styleName="actionBtn">SALES HISTORY</g:Button></td>
+					<td><g:Button ui:field="settingsBtn" styleName="actionBtn">SETTINGS</g:Button></td>
 				</tr>
 			</table>
 		</td></tr></table>
@@ -90,6 +96,7 @@
 			<g:HTMLPanel>
 				<div class="successMsg">Success!!!</div>
 				<div ui:field="successMsg">Order Completed Successfully</div>
+				<g:Button ui:field="successPopupPrintBtn" styleName="popupButton">PRINT</g:Button>
 				<g:Button ui:field="successPopupCloseBtn" styleName="popupButton">OK</g:Button>
 			</g:HTMLPanel>
 		</p:POSDialogBox>
@@ -111,16 +118,76 @@
 			</g:HTMLPanel>
 		</p:POSDialogBox>
 		
+		<p:POSDialogBox ui:field="printOrderPopup" animationEnabled="true" glassEnabled="true" visible="false">
+			<g:HTMLPanel>
+				<table>
+					<tr>
+						<td><p:IntegerListBox ui:field="orderNoList" ></p:IntegerListBox></td>
+					</tr>
+					<tr>
+						<td>
+							<g:Button styleName="popupButton" ui:field="printOrderOKBtn">PRINT</g:Button>
+							&nbsp;
+							<g:Button styleName="popupButton" ui:field="printOrderCancel">CLOSE</g:Button>
+						</td>
+					</tr>
+				</table>
+			</g:HTMLPanel>
+		</p:POSDialogBox>
+		
+		<p:POSDialogBox ui:field="settingsPopup" animationEnabled="true" glassEnabled="true" visible="false">
+			<g:HTMLPanel>
+				<table>
+					<tr>
+						<td>Print Type:</td>
+						<td>
+							<g:ListBox ui:field="printTypeList">
+							<g:item value='SLIP'>
+						    	SLIP
+						  	</g:item>
+						  	<g:item value='A4'>
+						    	A4
+						  	</g:item>
+						</g:ListBox>
+						</td>
+					</tr>
+					<tr>
+						<td>Print Device:</td><td><g:TextBox ui:field="printDevice"></g:TextBox></td>
+					<tr>
+					</tr>
+						<td>Print Width:</td><td><g:TextBox ui:field="printWidth"></g:TextBox></td>
+					</tr>
+					<tr>
+						<td colspan="2">
+							<g:Button styleName="popupButton" ui:field="settingsOKBtn">SAVE</g:Button>
+							&nbsp;
+							<g:Button styleName="popupButton" ui:field="settingsCancel">CANCEL</g:Button>
+						</td>
+					</tr>
+				</table>
+			</g:HTMLPanel>
+		</p:POSDialogBox>
+		
 		<p:POSDialogBox ui:field="updateProductPopup" animationEnabled="true" glassEnabled="true" visible="false" styleName="gwt-DialogBox gwt-DialogBox1">
 			<g:HTMLPanel>
 				<table>
 					<tr>
+						<td>Category : </td>
+							<td>
+								<p:KeyNamePairListBox tableName="M_Product_Category" ui:field="categoryId"></p:KeyNamePairListBox>
+								<g:SimpleCheckBox ui:field="newCategory"></g:SimpleCheckBox>
+								<g:TextBox ui:field="newCategoryName"></g:TextBox>
+							</td>
+						<td>Tax : </td><td><p:KeyNamePairListBox tableName="C_TaxCategory" ui:field="taxCategoryId"></p:KeyNamePairListBox></td>
+					</tr>
+					<tr>
 						<g:Hidden ui:field="updateProductId"></g:Hidden>
-						<td>Code : </td><td><g:TextBox ui:field="updateProductCode"></g:TextBox></td>
+						<td>Code : </td><td><g:TextBox ui:field="updateProductCode"></g:TextBox>
+						<g:SimpleCheckBox ui:field="autoProductCode"></g:SimpleCheckBox></td>
 						<td>Description : </td><td><g:TextBox ui:field="updateProductDescription"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td>UOM : </td><td><p:UomListBox ui:field="uomListBox"></p:UomListBox> </td>
+						<td>UOM : </td><td><p:KeyNamePairListBox tableName="C_Uom" ui:field="uomListBox"></p:KeyNamePairListBox> </td>
 						<td>Purchase Price : </td><td><p:BigDecimalBox ui:field="updateProductPurchasePrice"></p:BigDecimalBox></td>
 					</tr>
 					<tr>
@@ -215,6 +282,37 @@
 					<tr>
 						<td colspan="5">
 							<g:Button styleName="popupButton" ui:field="salesHistoryCloseBtn">CLOSE</g:Button>
+						</td>
+					</tr>
+				</table>
+			</g:HTMLPanel>
+		</p:POSDialogBox>
+		
+		<p:POSDialogBox ui:field="productListPopup" animationEnabled="true" glassEnabled="true" visible="false" styleName="gwt-DialogBox gwt-DialogBox1">
+			<g:HTMLPanel>
+				<table>
+					<tr>
+						<td nowrap="">Code : </td><td><g:TextBox ui:field="productListCode" styleName="input100" /> </td>
+						<td nowrap="">Descr : </td><td><g:TextBox ui:field="productListDescr" styleName="input100"/> </td>
+						<td nowrap="">Category : </td>
+						<td>
+							<p:KeyNamePairListBox tableName="M_Product_Category" ui:field="productListCategory">
+							</p:KeyNamePairListBox>
+						</td>
+						<td>
+							<g:Button ui:field="productListSubmit">Search</g:Button>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="7">
+							<c:CellTable ui:field="productListTable">
+							</c:CellTable>
+							<c:SimplePager ui:field="productPager" styleName="pagerTable" />
+						</td>
+					</tr>
+					<tr>
+						<td colspan="7">
+							<g:Button styleName="popupButton" ui:field="productListCloseBtn">CLOSE</g:Button>
 						</td>
 					</tr>
 				</table>
