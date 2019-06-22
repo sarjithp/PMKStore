@@ -6,6 +6,7 @@ package com.pmk.client.widgets;
 import java.util.List;
 
 import com.google.gwt.core.client.GWT;
+import com.google.gwt.uibinder.client.UiConstructor;
 import com.google.gwt.user.client.rpc.AsyncCallback;
 import com.pmk.client.PosService;
 import com.pmk.client.PosServiceAsync;
@@ -15,16 +16,20 @@ import com.pmk.shared.KeyNamePair;
  * @author sarjith
  *
  */
-public class UomListBox extends IntegerListBox {
+public class KeyNamePairListBox extends IntegerListBox {
 
 	private static PosServiceAsync service = GWT.create(PosService.class);
 	
-	public UomListBox() {
+	String tableName = null;
+	
+	@UiConstructor
+	public KeyNamePairListBox(String tableName) {
 		super();
+		this.tableName = tableName;
 	}
 	
 	public void refresh() {
-		service.getUomList(new AsyncCallback<List<KeyNamePair>>() {
+		service.getKeyNamePairList(tableName,new AsyncCallback<List<KeyNamePair>>() {
 			@Override
 			public void onFailure(Throwable caught) {
 				
