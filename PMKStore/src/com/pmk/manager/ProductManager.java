@@ -1,5 +1,6 @@
 package com.pmk.manager;
 
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -20,6 +21,8 @@ import com.google.gwt.user.client.ui.SuggestOracle.Suggestion;
 import com.pmk.shared.KeyNamePair;
 import com.pmk.shared.OperationException;
 import com.pmk.shared.ProductBean;
+import com.pmk.shared.TaxCategoryBean;
+import com.pmk.util.POSEnv;
 import com.pmk.util.PoHandler;
 
 public class ProductManager {
@@ -45,6 +48,7 @@ public class ProductManager {
 		product.setName(bean.getProductCode());
 		product.setDescription(bean.getDescription());
 		product.setC_UOM_ID(bean.getUomId());
+		product.setUUID(bean.getHscode());
 		
 		//setting default category
 		if (bean.isCreateNewCategory()) {
@@ -61,7 +65,7 @@ public class ProductManager {
 		}
 		
 		//setting default tax category
-		if (bean.getTaxCategoryId() != null && bean.getTaxCategoryId() == 0) {
+		if (bean.getTaxCategoryId() != null && bean.getTaxCategoryId() != 0) {
 			product.setC_TaxCategory_ID(bean.getTaxCategoryId());
 		} else {
 			int[] ids = MTaxCategory.getAllIDs(MTaxCategory.Table_Name, "isdefault = 'Y' and ad_client_id = " + Env.getAD_Client_ID(ctx), null);
@@ -70,7 +74,7 @@ public class ProductManager {
 		
 		PoHandler.savePO(product);
 		
-		
+		//saving sales price
 		MPriceList pl = MPriceList.get(ctx, bean.getPriceListId(), trxName);
 		
 		MPriceListVersion version = pl.getPriceListVersion(null);
@@ -85,11 +89,33 @@ public class ProductManager {
 			price.setM_Product_ID(product.get_ID());
 			price.setM_PriceList_Version_ID(version.get_ID());
 		}
-		price.setPriceLimit(bean.getLimitPrice());
+		price.setPriceLimit(BigDecimal.ONE);
 		price.setPriceStd(bean.getSalesPrice());
 		price.setPriceList(bean.getSalesPrice());
 		
 		PoHandler.savePO(price);
+		
+		//saving purchase price
+		if (bean.getPurchasePrice() != null && bean.getPurchasePrice().signum() > 0) {
+			pl = MPriceList.getDefault(ctx, false);
+			version = pl.getPriceListVersion(null);
+			if (version == null) {
+				version = new MPriceListVersion(pl);
+				PoHandler.savePO(version);
+			}
+			
+			price = MProductPrice.get(ctx, version.get_ID(), product.get_ID(), trxName);
+			if (price == null) {
+				price = new MProductPrice(ctx, 0, trxName);
+				price.setM_Product_ID(product.get_ID());
+				price.setM_PriceList_Version_ID(version.get_ID());
+			}
+			price.setPriceLimit(BigDecimal.ONE);
+			price.setPriceStd(bean.getPurchasePrice());
+			price.setPriceList(bean.getPurchasePrice());
+			
+			PoHandler.savePO(price);
+		}
 	}
 
 	public static List<KeyNamePair> getKeyNamePairList(Properties ctx, String tableName) {
@@ -120,6 +146,9 @@ public class ProductManager {
 		bean.setDescription(product.getDescription());
 		bean.setUomId(product.getC_UOM_ID());
 		bean.setPriceListId(pricelistId);
+		bean.setTaxCategoryId(product.getC_TaxCategory_ID());
+		bean.setCategoryId(product.getM_Product_Category_ID());
+		bean.setHscode(product.getUUID());
 		
 		MPriceList pl = MPriceList.get(ctx, bean.getPriceListId(), null);
 		MPriceListVersion version = pl.getPriceListVersion(null);
@@ -226,6 +255,35 @@ public class ProductManager {
 	public static  int getNextProductCode(Properties ctx) {
 		return DB.getSQLValue(null, "select max(coalesce(value::numeric,0)) + 1 from m_product where value ~ '^[0-9\\.]+$' "
 				+ " and ad_client_id=" + Env.getAD_Client_ID(ctx)); 
+	}
+
+	public static List<TaxCategoryBean> getTaxCategories(Properties ctx) {
+		String sql = "select tc.c_taxcategory_id, tc.name, coalesce(sum(childtax.rate),t.rate) as rate "
+				+ " from c_taxcategory tc left join c_tax t on tc.c_taxcategory_id = t.c_taxcategory_id and t.isdefault='Y' "
+				+ " left join c_tax childtax on childtax.parent_tax_id = t.c_tax_id "
+				+ " where tc.ad_client_id = " + Env.getAD_Client_ID(ctx)
+				+ " group by tc.c_taxcategory_id,t.c_tax_id "
+				+ " order by tc.isdefault desc";
+		
+		PreparedStatement stmt = null;
+		ResultSet rs = null;
+		List<TaxCategoryBean> list = new ArrayList<TaxCategoryBean>();;
+		try {
+			stmt = DB.prepareStatement(sql,null);
+			rs = stmt.executeQuery();
+			while (rs != null && rs.next()) {
+				TaxCategoryBean bean = new TaxCategoryBean();
+				bean.setKey(rs.getInt("c_taxcategory_id"));
+				bean.setName(rs.getString("name"));
+				bean.setTaxRate(rs.getBigDecimal("rate"));
+				list.add(bean);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DB.close(rs, stmt);
+		}
+		return list;
 	}
 	
 }

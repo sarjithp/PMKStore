@@ -1,5 +1,7 @@
 package com.pmk.manager;
 
+import javax.servlet.http.HttpServletResponse;
+
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.math.BigDecimal;
@@ -7,25 +9,34 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import net.sf.jasperreports.engine.JREmptyDataSource;
 import net.sf.jasperreports.engine.JRExporter;
 import net.sf.jasperreports.engine.JRExporterParameter;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperRunManager;
 import net.sf.jasperreports.engine.export.JRPdfExporter;
 
 import org.compiere.model.MDocType;
+import org.compiere.model.MInvoice;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
+import org.compiere.model.MPayment;
 import org.compiere.model.MProduct;
 import org.compiere.model.MProductPrice;
 import org.compiere.model.MSysConfig;
+import org.compiere.model.MTax;
+import org.compiere.model.MTaxCategory;
 import org.compiere.util.DB;
 import org.compiere.util.Env;
 
@@ -54,13 +65,26 @@ public class OrderManager {
 		
 		MProductPrice price = ProductManager.getProductPrice(ctx,productId, priceListId);
 		
-		item.setInclPrice(price.getPriceStd().setScale(2));
+		item.setUnitPrice(price.getPriceStd().setScale(2));
+		
+		//setting tax rate to tax
+		MTaxCategory taxCategory = (MTaxCategory) product.getC_TaxCategory(); 
+		MTax tax = taxCategory.getDefaultTax();
+		if (!tax.isSummary()) {
+			item.setTaxRate(tax.getRate());
+		} else {
+			MTax[] childTaxes = tax.getChildTaxes(false);
+			for (MTax childTax : childTaxes) {
+				item.setTaxRate((item.getTaxRate() == null ? BigDecimal.ZERO : item.getTaxRate()).add(childTax.getRate()));
+			}
+		}
 		
 		return item;
 	}
 
 	public static OrderBean completeOrder(Properties ctx, OrderBean bean,
 			List<CartItem> items, String trxName) throws OperationException {
+		
 		MOrder order = new MOrder(ctx,0, trxName);
 		order.setC_BPartner_ID(bean.getCustomerId());
 		order.setM_PriceList_ID(bean.getPriceListId());
@@ -70,6 +94,23 @@ public class OrderManager {
 		order.setDocStatus(MOrder.STATUS_Drafted);
 		order.setDocAction(MOrder.DOCACTION_Complete);
 		
+		//checking the order number entered by user
+		String orderNo = bean.getOrderNo();
+		if (orderNo != null && !orderNo.trim().isEmpty()) {
+			int[] ids = PoHandler.getAllIDs(MOrder.Table_Name, "documentno = ? and ad_client_id = ? and isactive='Y'", 
+					new Object[]{orderNo, Env.getAD_Client_ID(ctx)}, trxName);
+			if (ids != null && ids.length > 0) {
+				throw new OperationException("Order number already exists");
+			}
+			order.setDocumentNo(orderNo);
+		}
+		if (bean.getDateOrdered() != null && bean.getDateOrdered().before(getTodaysDate())) {
+			order.setDateOrdered(new Timestamp(bean.getDateOrdered().getTime()));
+			order.setDateAcct(order.getDateOrdered());
+			order.setDatePrinted(order.getDateOrdered());
+			order.setDatePromised(order.getDateOrdered());
+		}
+		
 		PoHandler.savePO(order);
 		
 		List<MOrderLine> orderlines = new ArrayList<MOrderLine>();
@@ -78,7 +119,7 @@ public class OrderManager {
 			orderline.setM_Product_ID(item.getProductId());
 			orderline.setQty(item.getQtyOrdered());
 			orderline.setPrice();
-			orderline.setPrice(item.getInclPrice());
+			orderline.setPrice(item.getUnitPrice());
 			
 			PoHandler.savePO(orderline);
 			orderlines.add(orderline);
@@ -102,7 +143,7 @@ public class OrderManager {
 		PoHandler.processIt(invoice, MOrder.DOCACTION_Complete);
 		
 		//creating shipments
-		MInOut inout = new MInOut(order, 0, null);
+		/*MInOut inout = new MInOut(order, 0, null);
 		inout.setC_Invoice_ID(invoice.getC_Invoice_ID());
 		PoHandler.savePO(inout);
 		
@@ -113,39 +154,74 @@ public class OrderManager {
 			PoHandler.savePO(inoutline);
 		}
 		
-		PoHandler.processIt(invoice, MOrder.DOCACTION_Complete);
+		PoHandler.processIt(invoice, MOrder.DOCACTION_Complete);*/
+		
+		//since invoice is automatically created from order.completeit()
+		MInvoice invoice = null;
+		//if the order number is passed from screen then we have to modify the invoice's details too
+		if (orderNo != null && !orderNo.trim().isEmpty()) {
+			int ids[] = MInvoice.getAllIDs(MInvoice.Table_Name, "C_Order_ID = " + order.getC_Order_ID(), trxName);
+			if (ids != null && ids.length > 0) {
+				invoice = new MInvoice(ctx, ids[0], trxName);
+			}
+			invoice.setDocumentNo(orderNo);
+			PoHandler.savePO(invoice);
+		}
 		
 		if (MOrder.PAYMENTRULE_Cash.equalsIgnoreCase(order.getPaymentRule())) {
+			if (invoice == null) {
+				int ids[] = MInvoice.getAllIDs(MInvoice.Table_Name, "C_Order_ID = " + order.getC_Order_ID(), trxName);
+				if (ids != null && ids.length > 0) {
+					invoice = new MInvoice(ctx, ids[0], trxName);
+				}
+			}
 			MPayment payment = new MPayment(ctx, 0, trxName);
-			payment.setPayAmt(order.getGrandTotal());
+			payment.setPayAmt(invoice.getGrandTotal());
 			payment.setTenderType(MPayment.TENDERTYPE_Cash);
 			payment.setC_BPartner_ID(order.getC_BPartner_ID());
 			payment.setC_DocType_ID(true);
 			payment.setC_Invoice_ID(invoice.getC_Invoice_ID());
 			payment.setC_Order_ID(order.getC_Order_ID());
 			payment.setC_CashBook_ID(PaymentManager.getCashbookId(ctx));
-			payment.setC_Currency_ID(304);//INR
+			payment.setC_Currency_ID(304);//INR //TODO remove the hardcode.
 			
 			PoHandler.savePO(payment);
 			PoHandler.processIt(payment, MPayment.DOCACTION_Complete);
 			
 			invoice.setC_Payment_ID(payment.get_ID());
-			PoHandler.savePO(payment);
-		}*/
+			PoHandler.savePO(invoice);
+		}
 		
 		bean.setOrderId(order.get_ID());
+		bean.setOrderNo(order.getDocumentNo());
 		return bean;
 	}
 
+	//return today's date without time
+	private static Date getTodaysDate() {
+		Calendar cal = Calendar.getInstance();
+		cal.set(Calendar.HOUR, 0);
+		cal.set(Calendar.MINUTE, 0);
+		cal.set(Calendar.SECOND, 0);
+		cal.set(Calendar.MILLISECOND, 0);
+		return cal.getTime();
+	}
+
 	public static List<OrderBean> getSalesHistory(Properties ctx, long date, String paymentType) {
-		String sql = "SELECT documentno, o.paymentrule, grandtotal, name from c_order o join c_bpartner b on o.c_bpartner_id = b.c_bpartner_id " +
+		String sql = "SELECT o.c_order_id,o.documentno, o.paymentrule, i.grandtotal, b.name, max(p.description) as description,"
+				+ " i.documentno as invoiceno "
+				+ " from c_order o join c_orderline ol on o.c_order_id = ol.c_order_id"
+				+ " LEFT JOIN C_Invoice i on o.c_order_id = i.c_order_id "
+				+ " JOIN m_product p on ol.m_product_id = p.m_product_id "
+				+ " join c_bpartner b on o.c_bpartner_id = b.c_bpartner_id " +
 				" where o.ad_client_id = " + Env.getAD_Client_ID(ctx) + " AND o.dateordered::date = ? ::date ";
 		if ("cash".equalsIgnoreCase(paymentType)) {
 			sql += " AND o.paymentrule = '" + MOrder.PAYMENTRULE_Cash + "'"; 
 		} else if ("credit".equalsIgnoreCase(paymentType)) {
 			sql += " AND o.paymentrule = '" + MOrder.PAYMENTRULE_OnCredit + "'";
 		}
-		sql += " ORDER BY o.created ";
+		sql += " group by o.c_order_id,b.c_bpartner_id,i.c_invoice_id "
+			+ " ORDER BY o.created ";
 		List<OrderBean> list = new ArrayList<OrderBean>();
 		PreparedStatement stmt = null;
 		ResultSet rs = null;
@@ -155,10 +231,13 @@ public class OrderManager {
 			rs = stmt.executeQuery();
 			while (rs != null && rs.next()) {
 				OrderBean details = new OrderBean();
+				details.setOrderId(rs.getInt("c_order_id"));
 				details.setOrderNo(rs.getString("documentno"));
 				details.setGrandTotal(rs.getBigDecimal("grandtotal"));
 				details.setCustomerName(rs.getString("name"));
 				details.setPaymentType(MOrder.PAYMENTRULE_Cash.equalsIgnoreCase(rs.getString("paymentrule")) ? "Cash":"Credit");
+				details.setProductDescription(rs.getString("description"));
+				details.setInvoiceNo(rs.getString("invoiceno"));
 				list.add(details);
 			}
 		} catch (SQLException e) {
@@ -194,14 +273,16 @@ public class OrderManager {
 		return list;
 	}
 
-	public static void printOrder(Properties ctx, int orderId) throws Exception {
+	public static void printOrder(Properties ctx, int orderId, HttpServletResponse response) throws Exception {
 		String printType = MSysConfig.getValue(Constants.PRINT_TYPE,null, Env.getAD_Client_ID(ctx));
+		String printDevice = MSysConfig.getValue(Constants.PRINT_DEVICE,null, Env.getAD_Client_ID(ctx));
+		System.out.println(printType);
+		MOrder order = new MOrder(ctx, orderId, null);
+		MInvoice[] invoices = null;//order.getInvoices();
 		if (printType != null && Constants.PRINT_TYPE_VALUE_SLIP.equalsIgnoreCase(printType)) {//slip printing
-			String printDevice = MSysConfig.getValue(Constants.PRINT_DEVICE,null, Env.getAD_Client_ID(ctx));
 			if (printDevice == null || printDevice.trim().isEmpty()) {
 				throw new OperationException("Printer is not defined");
 			}
-			MOrder order = new MOrder(ctx, orderId, null);
 			PMKPrintformat format = new PMKPrintformat();
 			FileWriter writer = null;
 			try {
@@ -217,10 +298,18 @@ public class OrderManager {
 			}
 		} else {//a4 printing
 			Connection connection = null;
+			FileOutputStream output = null;
 			try {
 			
-				String reportName = "myreport";
+				String reportName = printDevice + "taxInvoice";
+				
+				String pdfFileName = printDevice + "Invoice_"; 
+				pdfFileName += ((invoices != null && invoices.length > 0) ? invoices[0].getDocumentNo() : order.getDocumentNo()); 
+				pdfFileName	+= ".pdf"; 
+				output = new FileOutputStream(pdfFileName);
+				
 				Map<String, Object> parameters = new HashMap<String, Object>();
+				parameters.put("c_order_id", new BigDecimal(orderId));
 				connection = DB.getConnectionRO();
 
 				// compiles jrxml
@@ -230,14 +319,29 @@ public class OrderManager {
 				// exports report to pdf
 				JRPdfExporter exporter = new JRPdfExporter();
 				exporter.setParameter(JRExporterParameter.JASPER_PRINT, print);
-				exporter.setParameter(JRExporterParameter.OUTPUT_STREAM, new FileOutputStream(reportName + ".pdf")); // your output goes here
+				exporter.setParameter(JRExporterParameter.OUTPUT_STREAM, output); // your output goes here
 				
 				exporter.exportReport();
+				
+				//prepare to export the pdf
+//				File reportFile = new File(reportName + ".jasper");
+//				byte[] bytes = JasperRunManager.runReportToPdf(reportFile.getPath(), parameters, connection);
+//
+//	            response.setContentType("application/pdf");
+//	            response.setContentLength(bytes.length);
+//	            ServletOutputStream outStream = response.getOutputStream();
+//	            outStream.write(bytes, 0, bytes.length);
+//	            outStream.flush();
+//	            outStream.close();
 
 			} catch (Exception e) {
+				e.printStackTrace();
 				throw new RuntimeException("It's not possible to generate the pdf report.", e);
 			} finally {
-				
+				if (output != null) {
+					output.close();
+					output = null;
+				}
 			}
 		}
 		
@@ -296,6 +400,31 @@ public class OrderManager {
 		}
 		PoHandler.savePO(config);
 		MSysConfig.resetCache();
+	}
+	
+	public static void main(String[] args) {
+		Connection connection = null;
+		try {
+		
+			String reportName = "/home/sarjith/workspace/taxInvoice";
+			Map<String, Object> parameters = new HashMap<String, Object>();
+
+			// compiles jrxml
+			JasperCompileManager.compileReportToFile(reportName + ".jrxml");
+			// fills compiled report with parameters and a connection
+			JasperPrint print = JasperFillManager.fillReport(reportName + ".jasper", parameters, new JREmptyDataSource());
+			// exports report to pdf
+			JRPdfExporter exporter = new JRPdfExporter();
+			exporter.setParameter(JRExporterParameter.JASPER_PRINT, print);
+			exporter.setParameter(JRExporterParameter.OUTPUT_STREAM, new FileOutputStream(reportName + ".pdf")); // your output goes here
+			
+			exporter.exportReport();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			
+		}
 	}
 
 }

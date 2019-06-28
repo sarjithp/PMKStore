@@ -3,6 +3,7 @@ package com.pmk.client.widgets;
 import java.math.BigDecimal;
 import java.text.ParseException;
 
+import com.google.gwt.i18n.client.NumberFormat;
 import com.google.gwt.text.shared.Parser;
 
 public class BigDecimalParser implements Parser<BigDecimal> {
@@ -28,7 +29,7 @@ public class BigDecimalParser implements Parser<BigDecimal> {
 	    }
 
 	    try {
-	      return new BigDecimal(object.toString());
+	      return new BigDecimal(String.valueOf(NumberFormat.getDecimalFormat().parse(object.toString())));
 	    } catch (NumberFormatException e) {
 	      throw new ParseException(e.getMessage(), 0);
 	    }

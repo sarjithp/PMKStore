@@ -9,6 +9,10 @@ import com.google.gwt.user.client.rpc.IsSerializable;
  * @author sarjith
  *
  */
+/**
+ * @author sarjith
+ *
+ */
 public class LoginUser implements IsSerializable {
 
 	public LoginUser() {
@@ -18,7 +22,14 @@ public class LoginUser implements IsSerializable {
 	private String userName;
 	private int priceListId;
 	private int cashCustomerId;
-	
+	private String orgName;
+
+	public String getOrgName() {
+		return orgName;
+	}
+	public void setOrgName(String orgName) {
+		this.orgName = orgName;
+	}
 	public int getPriceListId() {
 		return priceListId;
 	}

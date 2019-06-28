@@ -10,17 +10,25 @@
 				<tr>
 					<td nowrap="">User : </td>
 					<td><g:TextBox ui:field="userName" enabled="false"></g:TextBox></td>
+					<td nowrap="">Org : </td>
+					<td><g:TextBox ui:field="orgName" enabled="false"></g:TextBox></td>
 					<td nowrap="">Type : </td>
 					<td>
 						<g:ListBox ui:field="saleTypeList">
 							<g:item value='cash'>
-						    	Cash
+						    	Cash Sale
 						  	</g:item>
 						  	<g:item value='credit'>
-						    	Credit
+						    	Credit Sale
 						  	</g:item>
 						</g:ListBox>
 					</td>
+				</tr>
+				<tr>
+					<td nowrap="">Order No : </td>
+					<td><g:TextBox ui:field="orderNo"></g:TextBox></td>
+					<td nowrap="">Date : </td>
+					<td><d:DateBox ui:field="dateOrdered"></d:DateBox></td>
 					<td nowrap="">Customer : </td>
 					<td><g:SuggestBox ui:field="customerSuggest"></g:SuggestBox></td>
 					<td nowrap="">Balance : </td>
@@ -48,7 +56,7 @@
 				<tr>
 					<td colspan="8">
 						<div style="float:right">
-							<g:Button styleName="completeButton" ui:field="printOrderBtn">
+							<g:Button styleName="completeButton" ui:field="printOrderBtn" visible="false">
 								PRINT ORDER
 							</g:Button>
 							<g:Button styleName="completeButton" ui:field="clearAllBtn">
@@ -96,6 +104,7 @@
 			<g:HTMLPanel>
 				<div class="successMsg">Success!!!</div>
 				<div ui:field="successMsg">Order Completed Successfully</div>
+				<div>Order Number : <span ui:field="successOrderNo"></span></div>
 				<g:Button ui:field="successPopupPrintBtn" styleName="popupButton">PRINT</g:Button>
 				<g:Button ui:field="successPopupCloseBtn" styleName="popupButton">OK</g:Button>
 			</g:HTMLPanel>
@@ -172,27 +181,32 @@
 			<g:HTMLPanel>
 				<table>
 					<tr>
-						<td>Category : </td>
+						<td nowrap="">Category : </td>
 							<td>
 								<p:KeyNamePairListBox tableName="M_Product_Category" ui:field="categoryId"></p:KeyNamePairListBox>
 								<g:SimpleCheckBox ui:field="newCategory"></g:SimpleCheckBox>
 								<g:TextBox ui:field="newCategoryName"></g:TextBox>
 							</td>
-						<td>Tax : </td><td><p:KeyNamePairListBox tableName="C_TaxCategory" ui:field="taxCategoryId"></p:KeyNamePairListBox></td>
+						<td nowrap="">Tax : </td><td nowrap=""><p:TaxCatgoryListBox ui:field="taxCategoryId"></p:TaxCatgoryListBox></td>
 					</tr>
 					<tr>
 						<g:Hidden ui:field="updateProductId"></g:Hidden>
-						<td>Code : </td><td><g:TextBox ui:field="updateProductCode"></g:TextBox>
+						<td nowrap="">Code : </td><td><g:TextBox ui:field="updateProductCode"></g:TextBox>
 						<g:SimpleCheckBox ui:field="autoProductCode"></g:SimpleCheckBox></td>
-						<td>Description : </td><td><g:TextBox ui:field="updateProductDescription"></g:TextBox></td>
+						<td nowrap="">Description : </td><td><g:TextBox ui:field="updateProductDescription"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td>UOM : </td><td><p:KeyNamePairListBox tableName="C_Uom" ui:field="uomListBox"></p:KeyNamePairListBox> </td>
-						<td>Purchase Price : </td><td><p:BigDecimalBox ui:field="updateProductPurchasePrice"></p:BigDecimalBox></td>
+						<td nowrap="">UOM : </td><td><p:KeyNamePairListBox tableName="C_Uom" ui:field="uomListBox"></p:KeyNamePairListBox> </td>
+						<td nowrap="">HS Code : </td><td nowrap=""><g:TextBox ui:field="hscode"></g:TextBox></td>
+						<p:BigDecimalBox ui:field="updateProductLimitPrice" visible="false"></p:BigDecimalBox>
 					</tr>
 					<tr>
-						<td>Sales Price : </td><td><p:BigDecimalBox ui:field="updateProductSalesPrice"></p:BigDecimalBox></td>
-						<td>Limit Price : </td><td><p:BigDecimalBox ui:field="updateProductLimitPrice"></p:BigDecimalBox></td>
+						<td nowrap="">Sales Price : </td><td><p:BigDecimalBox ui:field="updateProductSalesPrice"></p:BigDecimalBox></td>
+						<td nowrap="">Sales Incl : </td><td><p:BigDecimalBox ui:field="updateProductSalesPriceIncl"></p:BigDecimalBox></td>
+					</tr>
+					<tr>
+						<td nowrap="">Purchase Price : </td><td><p:BigDecimalBox ui:field="updateProductPurchasePrice"></p:BigDecimalBox></td>
+						<td nowrap="">Purchase Incl : </td><td><p:BigDecimalBox ui:field="updateProductPurchasePriceIncl"></p:BigDecimalBox></td>
 					</tr>
 					<tr>
 						<td colspan="4">
@@ -210,16 +224,19 @@
 				<table>
 					<tr>
 						<g:Hidden ui:field="customerId"></g:Hidden>
-						<td>Code : </td><td><g:TextBox ui:field="customerCode"></g:TextBox></td>
+						<td nowrap="">Code : </td><td><g:TextBox ui:field="customerCode"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td>Name : </td><td><g:TextBox ui:field="customerName"></g:TextBox></td>
+						<td nowrap="">Name : </td><td><g:TextBox ui:field="customerName"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td>Address : </td><td><g:TextBox ui:field="customerAddress"></g:TextBox></td>
+						<td nowrap="">GST No : </td><td><g:TextBox ui:field="customerTaxNo"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td>Mobile : </td><td><g:TextBox ui:field="customerPhone"></g:TextBox></td>
+						<td nowrap="">Address : </td><td><g:TextBox ui:field="customerAddress"></g:TextBox></td>
+					</tr>
+					<tr>
+						<td nowrap="">Mobile : </td><td><g:TextBox ui:field="customerPhone"></g:TextBox></td>
 					</tr>
 					<tr>
 						<td colspan="2">
@@ -288,7 +305,8 @@
 			</g:HTMLPanel>
 		</p:POSDialogBox>
 		
-		<p:POSDialogBox ui:field="productListPopup" animationEnabled="true" glassEnabled="true" visible="false" styleName="gwt-DialogBox gwt-DialogBox1">
+		<p:POSDialogBox ui:field="productListPopup" animationEnabled="true" glassEnabled="true" visible="false" 
+		styleName="gwt-DialogBox gwt-DialogBox1">
 			<g:HTMLPanel>
 				<table>
 					<tr>
@@ -313,6 +331,33 @@
 					<tr>
 						<td colspan="7">
 							<g:Button styleName="popupButton" ui:field="productListCloseBtn">CLOSE</g:Button>
+						</td>
+					</tr>
+				</table>
+			</g:HTMLPanel>
+		</p:POSDialogBox>
+		
+		<p:POSDialogBox ui:field="customerListPopup" animationEnabled="true" glassEnabled="true" 
+			visible="false" styleName="gwt-DialogBox gwt-DialogBox2">
+			<g:HTMLPanel>
+				<table>
+					<tr>
+						<td nowrap="">Code : </td><td><g:TextBox ui:field="customerListCode" styleName="input100" /> </td>
+						<td nowrap="">Name : </td><td><g:TextBox ui:field="customerListName" styleName="input100"/> </td>
+						<td>
+							<g:Button ui:field="customerListSubmit">Search</g:Button>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="5">
+							<c:CellTable ui:field="customerListTable">
+							</c:CellTable>
+							<c:SimplePager ui:field="customerPager" styleName="pagerTable" />
+						</td>
+					</tr>
+					<tr>
+						<td colspan="5">
+							<g:Button styleName="popupButton" ui:field="customerListCloseBtn">CLOSE</g:Button>
 						</td>
 					</tr>
 				</table>

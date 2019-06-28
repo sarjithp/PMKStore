@@ -18,7 +18,7 @@ import com.pmk.shared.KeyNamePair;
  */
 public class KeyNamePairListBox extends IntegerListBox {
 
-	private static PosServiceAsync service = GWT.create(PosService.class);
+	public static PosServiceAsync service = GWT.create(PosService.class);
 	
 	String tableName = null;
 	

@@ -4,6 +4,7 @@
 package com.pmk.shared;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import com.google.gwt.user.client.rpc.IsSerializable;
 import com.google.gwt.view.client.ProvidesKey;
@@ -22,10 +23,28 @@ public class CartItem implements IsSerializable {
 	private String description;
 	private BigDecimal qtyOnHand;
 	private BigDecimal qtyOrdered;
-	private BigDecimal inclPrice;
+	private BigDecimal unitPrice;
 	private String barcode;
 	private String uom;
+	private BigDecimal taxRate;
 	
+	static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+	
+	public BigDecimal getTaxRate() {
+		return taxRate;
+	}
+	public void setTaxRate(BigDecimal taxRate) {
+		this.taxRate = taxRate;
+	}
+	public BigDecimal getExclTotalAmt() {
+		return unitPrice.multiply(qtyOrdered);
+	}
+	public BigDecimal getTotalTaxAmt() {
+		return getExclTotalAmt().multiply(taxRate).divide(ONE_HUNDRED, RoundingMode.HALF_UP);
+	}
+	public BigDecimal getInclPrice() {
+		return unitPrice.add(unitPrice.multiply(taxRate).divide(ONE_HUNDRED, RoundingMode.HALF_UP));
+	}
 	public String getUom() {
 		return uom;
 	}
@@ -68,11 +87,11 @@ public class CartItem implements IsSerializable {
 	public void setQtyOrdered(BigDecimal qtyOrdered) {
 		this.qtyOrdered = qtyOrdered;
 	}
-	public BigDecimal getInclPrice() {
-		return inclPrice;
+	public BigDecimal getUnitPrice() {
+		return unitPrice;
 	}
-	public void setInclPrice(BigDecimal inclPrice) {
-		this.inclPrice = inclPrice;
+	public void setUnitPrice(BigDecimal unitPrice) {
+		this.unitPrice = unitPrice;
 	}
 	
 	/**

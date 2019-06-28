@@ -6,6 +6,7 @@ import java.util.Properties;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.compiere.util.Trx;
 
@@ -23,6 +24,7 @@ import com.pmk.shared.OperationException;
 import com.pmk.shared.OrderBean;
 import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
+import com.pmk.shared.TaxCategoryBean;
 import com.pmk.util.DBUtil;
 import com.pmk.util.POSEnv;
 import com.pmk.util.TrxPrefix;
@@ -209,9 +211,11 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 
 	@Override
 	public void printOrder(int orderId) throws Exception {
+		System.out.println("print order");
 		HttpServletRequest request = this.getThreadLocalRequest();
+		HttpServletResponse response = this.getThreadLocalResponse();
 		Properties ctx = POSEnv.getCtx(request);
-		OrderManager.printOrder(ctx,orderId);
+		OrderManager.printOrder(ctx,orderId,response);
 	}
 
 	@Override
@@ -246,6 +250,20 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 		HttpServletRequest request = this.getThreadLocalRequest();
 		Properties ctx = POSEnv.getCtx(request);
 		return OrderManager.loadPrintSetup(ctx);
+	}
+
+	@Override
+	public List<TaxCategoryBean> getTaxCategories(String tableName) {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return ProductManager.getTaxCategories(ctx);
+	}
+
+	@Override
+	public List<CustomerBean> searchCustomers(String code, String name) {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return CustomerManager.searchCustomers(ctx,code,name);
 	}
 	
 }

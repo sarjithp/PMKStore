@@ -42,4 +42,9 @@ public class CustomerSuggestionOracle  extends SuggestOracle {
 					});
 		}
 	}
+	
+	@Override
+	public boolean isDisplayStringHTML() {
+		return true;
+	}
 }

@@ -12,6 +12,7 @@ import com.pmk.shared.LoginUser;
 import com.pmk.shared.OrderBean;
 import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
+import com.pmk.shared.TaxCategoryBean;
 
 /**
  * The async counterpart of <code>GreetingService</code>.
@@ -65,5 +66,11 @@ public interface PosServiceAsync {
 	void savePrintSetup(PrintSetup setup, AsyncCallback<Void> asyncCallback);
 
 	void loadPrintSetUp(AsyncCallback<PrintSetup> asyncCallback);
+
+	void getTaxCategories(String tableName,
+			AsyncCallback<List<TaxCategoryBean>> asyncCallback);
+
+	void searchCustomers(String code, String name,
+			AsyncCallback<List<CustomerBean>> asyncCallback);
 
 }

@@ -30,7 +30,14 @@ public class ProductBean implements IsSerializable, Suggestion {
 	private String newCategoryName;
 	private BigDecimal stockQty;
 	private String uomSymbol;
+	private String hscode;
 	
+	public String getHscode() {
+		return hscode;
+	}
+	public void setHscode(String hscode) {
+		this.hscode = hscode;
+	}
 	public String getUomSymbol() {
 		return uomSymbol;
 	}

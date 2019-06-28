@@ -16,9 +16,11 @@ import com.google.gwt.dom.client.SpanElement;
 import com.google.gwt.event.dom.client.ClickEvent;
 import com.google.gwt.event.dom.client.KeyCodes;
 import com.google.gwt.event.dom.client.KeyDownEvent;
+import com.google.gwt.event.dom.client.KeyUpEvent;
 import com.google.gwt.event.logical.shared.SelectionEvent;
 import com.google.gwt.event.logical.shared.SelectionHandler;
 import com.google.gwt.event.logical.shared.ValueChangeEvent;
+import com.google.gwt.i18n.client.DateTimeFormat;
 import com.google.gwt.uibinder.client.UiBinder;
 import com.google.gwt.uibinder.client.UiField;
 import com.google.gwt.uibinder.client.UiHandler;
@@ -46,6 +48,7 @@ import com.google.gwt.user.client.ui.SuggestOracle;
 import com.google.gwt.user.client.ui.TextBox;
 import com.google.gwt.user.client.ui.Widget;
 import com.google.gwt.user.client.ui.SuggestOracle.Suggestion;
+import com.google.gwt.user.client.Window;
 import com.google.gwt.user.datepicker.client.DateBox;
 import com.google.gwt.view.client.ListDataProvider;
 import com.google.gwt.view.client.SelectionChangeEvent;
@@ -55,6 +58,7 @@ import com.pmk.client.widgets.CustomerSuggestionOracle;
 import com.pmk.client.widgets.IntegerListBox;
 import com.pmk.client.widgets.ProductSuggestOracle;
 import com.pmk.client.widgets.KeyNamePairListBox;
+import com.pmk.client.widgets.TaxCatgoryListBox;
 import com.pmk.shared.CartItem;
 import com.pmk.shared.CustomerBean;
 import com.pmk.shared.LoginUser;
@@ -95,8 +99,8 @@ public class StorePOS extends Composite {
 		}
 	}
 	
-	class GrandTotal extends Header<String> {
-		public GrandTotal() {
+	class ExcludedTotal extends Header<String> {
+		public ExcludedTotal() {
 			super(new TextCell());
 		}
 
@@ -104,7 +108,37 @@ public class StorePOS extends Composite {
 		public String getValue() {
 			BigDecimal total = BigDecimal.ZERO;
 			for (CartItem item : dataList.getList()) {
-				total = total.add(item.getInclPrice().multiply(item.getQtyOrdered()).setScale(2, RoundingMode.HALF_UP));
+				total = total.add(item.getExclTotalAmt().setScale(2, RoundingMode.HALF_UP));
+			}
+			return String.valueOf(total);
+		}
+	}
+	
+	class TaxTotal extends Header<String> {
+		public TaxTotal() {
+			super(new TextCell());
+		}
+
+		@Override
+		public String getValue() {
+			BigDecimal total = BigDecimal.ZERO;
+			for (CartItem item : dataList.getList()) {
+				total = total.add(item.getTotalTaxAmt());
+			}
+			return String.valueOf(total);
+		}
+	}
+	
+	class LineTotal extends Header<String> {
+		public LineTotal() {
+			super(new TextCell());
+		}
+
+		@Override
+		public String getValue() {
+			BigDecimal total = BigDecimal.ZERO;
+			for (CartItem item : dataList.getList()) {
+				total = total.add(item.getExclTotalAmt().add(item.getTotalTaxAmt()).setScale(2, RoundingMode.HALF_UP));
 			}
 			grantTotalBox.setText(String.valueOf(total));
 			totalCountBox.setText(String.valueOf(dataList.getList().size()));
@@ -132,6 +166,7 @@ public class StorePOS extends Composite {
 		initSalesHistoryDataTable();
 		initSuggestBoxes();
 		initProductListingTable();
+		initCustomerListingTable();
 	}
 	
 	private void addToCartFromProductId(int productId) {
@@ -222,7 +257,7 @@ public class StorePOS extends Composite {
 		column = new TextColumn<CartItem>() {
 			@Override
 			public String getValue(CartItem object) {
-				return String.valueOf(object.getInclPrice());
+				return String.valueOf(object.getUnitPrice());
 			}
 		};
 		cartTable.addColumn(column, "Price");
@@ -230,12 +265,34 @@ public class StorePOS extends Composite {
 
 
 
-		footer = new GrandTotal();
+		footer = new ExcludedTotal();
 		footer.setHeaderStyleNames("textAlignRight");
 		column = new TextColumn<CartItem>() {
 			@Override
 			public String getValue(CartItem object) {
-				return String.valueOf(object.getInclPrice().multiply(object.getQtyOrdered()).setScale(2, RoundingMode.HALF_UP));
+				return String.valueOf(object.getExclTotalAmt().setScale(2, RoundingMode.HALF_UP));
+			}
+		};
+		cartTable.addColumn(column, new TextHeader("Gross Amt"), footer);
+		column.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
+		
+		footer = new TaxTotal();
+		footer.setHeaderStyleNames("textAlignRight");
+		column = new TextColumn<CartItem>() {
+			@Override
+			public String getValue(CartItem object) {
+				return String.valueOf(object.getTotalTaxAmt().setScale(2, RoundingMode.HALF_UP));
+			}
+		};
+		cartTable.addColumn(column, new TextHeader("Tax Amt"), footer);
+		column.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
+		
+		footer = new LineTotal();
+		footer.setHeaderStyleNames("textAlignRight");
+		column = new TextColumn<CartItem>() {
+			@Override
+			public String getValue(CartItem object) {
+				return String.valueOf(object.getExclTotalAmt().add(object.getTotalTaxAmt()).setScale(2, RoundingMode.HALF_UP));
 			}
 		};
 		cartTable.addColumn(column, new TextHeader("Total"), footer);
@@ -251,7 +308,7 @@ public class StorePOS extends Composite {
 				CartItem item = selectionModel.getSelectedObject();
 				if (item != null) {
 					qtyBox.setValue(item.getQtyOrdered());
-					priceBox.setValue(item.getInclPrice());
+					priceBox.setValue(item.getInclPrice().setScale(2, RoundingMode.HALF_UP));
 					qtyBox.setFocus(true);
 					qtyBox.selectAll();
 				}
@@ -265,6 +322,10 @@ public class StorePOS extends Composite {
 		loginPopup.center();
 		userpin.setFocus(true);
 		initShortcuts();
+		dateOrdered.setFormat(new DateBox.DefaultFormat 
+				(DateTimeFormat.getFormat("dd MMM, yyyy")));
+		salesHistoryDate.setFormat(new DateBox.DefaultFormat 
+				(DateTimeFormat.getFormat("dd MMM, yyyy")));
 	}
 	
 	private void initShortcuts() {
@@ -346,6 +407,7 @@ public class StorePOS extends Composite {
 				}
 				@Override
 				public void onSuccess(LoginUser result) {
+					Window.setTitle(result.getOrgName());
 					loginPopup.hide();
 					settingsBtn.setVisible(result.getUserName().equalsIgnoreCase("admin"));
 					uomListBox.refresh();
@@ -353,8 +415,9 @@ public class StorePOS extends Composite {
 					taxCategoryId.refresh();
 					categoryId.refresh();
 					userName.setText(result.getUserName());
+					orgName.setText(result.getOrgName());
 					user = result;
-					barcode.setFocus(true);
+					clearAll(null);
 				}
 			});
 		}
@@ -363,14 +426,19 @@ public class StorePOS extends Composite {
 	LoginUser user = null;
 	
 	@UiField
-	TextBox barcode, grantTotalBox, userpin, userName, updateProductCode, updateProductDescription, customerCode, customerName, customerAddress,
-	customerPhone, customerBalance, totalCountBox, newCategoryName, productListCode, productListDescr, printDevice, printWidth;
+	TextBox barcode, grantTotalBox, userpin, userName, orgName, updateProductCode, updateProductDescription, customerCode, customerName,
+	customerAddress, customerPhone, customerBalance, totalCountBox, newCategoryName, productListCode, productListDescr, printDevice,
+	printWidth, customerTaxNo, hscode, orderNo, customerListCode,customerListName;
 	
 	@UiField
-	BigDecimalBox updateProductSalesPrice,updateProductLimitPrice, qtyBox, priceBox, updateProductPurchasePrice, customerPayAmt;
+	BigDecimalBox updateProductSalesPrice,updateProductLimitPrice, qtyBox, priceBox, updateProductPurchasePrice, customerPayAmt,
+	updateProductSalesPriceIncl, updateProductPurchasePriceIncl;
 	
 	@UiField
-	KeyNamePairListBox uomListBox, taxCategoryId, categoryId, productListCategory;
+	KeyNamePairListBox uomListBox, categoryId, productListCategory;
+	
+	@UiField
+	TaxCatgoryListBox taxCategoryId;
 	
 	@UiField
 	IntegerListBox orderNoList;
@@ -382,7 +450,7 @@ public class StorePOS extends Composite {
 	ListBox saleTypeList, historySaleTypeList, printTypeList;
 	
 	@UiField
-	SpanElement userpinErrorMsg;
+	SpanElement userpinErrorMsg, successOrderNo;
 	
 	@UiField
 	SimpleCheckBox newCategory, autoProductCode;
@@ -447,15 +515,20 @@ public class StorePOS extends Composite {
 	@UiHandler("priceBox")
 	void priceUpdate(KeyDownEvent e) {
 		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER && !priceBox.getText().trim().isEmpty()) {
-			CartItem item = selectionModel.getSelectedObject();
-			BigDecimal price = priceBox.getValue();
-			if (item != null && price.compareTo(item.getInclPrice()) != 0) {
-				item.setInclPrice(price);
-				dataList.flush();
-				dataList.refresh();
-			}
-			(addedFromBarcode ? barcode : description).setFocus(true);
+			doPriceUpdate();
 		}
+	}
+	
+	void doPriceUpdate() {
+		CartItem item = selectionModel.getSelectedObject();
+		BigDecimal price = priceBox.getValue();
+		if (item != null) {
+			price = price.multiply(ONE_HUNDRED).divide(ONE_HUNDRED.add(item.getTaxRate()),2, RoundingMode.HALF_UP);
+			item.setUnitPrice(price);
+			dataList.flush();
+			dataList.refresh();
+		}
+		(addedFromBarcode ? barcode : description).setFocus(true);
 	}
 	
 	Focusable defaultFocus = null;
@@ -470,7 +543,7 @@ public class StorePOS extends Composite {
 	
 	@UiField
 	DialogBox errorPopup, successPopup, loginPopup, updateProductPopup, generalSuccessPopup, loadingPopup, customerPopup, customerPaymentPopup,
-	salesHistoryPopup, productListPopup, printOrderPopup, settingsPopup;
+	salesHistoryPopup, productListPopup, printOrderPopup, settingsPopup, customerListPopup;
 	
 	protected void displayErrorMesasge(String message, Focusable focus) {
 		errorPopup.center();
@@ -492,13 +565,15 @@ public class StorePOS extends Composite {
 		selectionModel.clear();
 		qtyBox.setText("");
 		priceBox.setText("");
-		barcode.setFocus(true);
 		selectionModel.clear();
 		salesCustomerId = 0;
 		saleTypeList.setSelectedIndex(0);
 		customerBalance.setValue("0");
 		customerSuggest.setText("");
 		lastCompletedOrderId = 0;
+		orderNo.setValue("");
+		dateOrdered.setValue(new Date());
+		barcode.setFocus(true);
 	}
 	
 	private OrderBean setOrderDetails() {
@@ -506,6 +581,8 @@ public class StorePOS extends Composite {
 		order.setCustomerId(getCustomerID());
 		order.setPaymentType(saleTypeList.getValue(saleTypeList.getSelectedIndex()));
 		order.setPriceListId(user.getPriceListId());
+		order.setOrderNo(orderNo.getValue());
+		order.setDateOrdered(dateOrdered.getValue());
 		return order;
 	}
 	
@@ -518,6 +595,10 @@ public class StorePOS extends Composite {
 		
 		List<CartItem> items = new ArrayList<CartItem>();
 		items.addAll(dataList.getList());
+		if (items.size() == 0) {
+			displayErrorMesasge("Please add products!!!", barcode);
+			return;
+		}
 		loadingPopup.center();
 		service.completeOrder(items, setOrderDetails(), new AsyncCallback<OrderBean>() {
 			@Override
@@ -529,6 +610,7 @@ public class StorePOS extends Composite {
 			public void onSuccess(OrderBean order) {
 				loadingPopup.hide();
 				successPopup.center();
+				successOrderNo.setInnerText(order.getOrderNo());
 				successPopupCloseBtn.setFocus(true);
 				lastCompletedOrderId = order.getOrderId();
 			}
@@ -575,15 +657,21 @@ public class StorePOS extends Composite {
 	@UiHandler("printOrderOKBtn")
 	void printOrderOKBtn(ClickEvent e) {
 		if (orderNoList.getValue() != null && orderNoList.getValue() > 0) {
-			service.printOrder(orderNoList.getValue(), new AsyncCallback<Void>() {
+			printOrder(orderNoList.getValue());
+			printOrderPopup.hide();
+		}
+	}
+	
+	void printOrder(int orderId) {
+		if (orderId > 0) {
+			service.printOrder(orderId, new AsyncCallback<Void>() {
 				@Override
 				public void onFailure(Throwable caught) {
 					displayErrorMesasge(caught.getMessage(), barcode);
 				}
 				@Override
 				public void onSuccess(Void result) {
-					printOrderPopup.hide();
-					barcode.setFocus(true);
+					displaySuccessMsg("Pdf saved successfully", barcode);
 				}
 			});
 		}
@@ -636,6 +724,7 @@ public class StorePOS extends Composite {
 	void updateProductPopupSave(ClickEvent e) {
 		ProductBean bean = new ProductBean();
 		bean.setProductId(Integer.valueOf(updateProductId.getValue()));
+		final boolean newProduct = bean.getProductId() <= 0;
 		bean.setProductCode(updateProductCode.getText());
 		bean.setDescription(updateProductDescription.getValue());
 		bean.setSalesPrice(updateProductSalesPrice.getValue());
@@ -646,6 +735,7 @@ public class StorePOS extends Composite {
 		bean.setCreateNewCategory(newCategory.getValue());
 		bean.setNewCategoryName(newCategoryName.getText());
 		bean.setTaxCategoryId(taxCategoryId.getValue());
+		bean.setHscode(hscode.getText());
 		loadingPopup.center();
 		service.saveProduct(bean, new AsyncCallback<Void>() {
 			@Override
@@ -658,6 +748,10 @@ public class StorePOS extends Composite {
 				loadingPopup.hide();
 				displaySuccessMsg("Product Saved Successfully", barcode);
 				updateProductPopup.hide();
+				if (!newProduct) {
+					priceBox.setValue(updateProductSalesPriceIncl.getValue());
+					doPriceUpdate();
+				}
 			}
 		});
 	}
@@ -670,6 +764,9 @@ public class StorePOS extends Composite {
 		updateProductLimitPrice.setValue(result.getLimitPrice() == null ? BigDecimal.ZERO : result.getLimitPrice());
 		updateProductId.setValue(String.valueOf(result.getProductId()));
 		updateProductPurchasePrice.setValue(result.getPurchasePrice() == null ? BigDecimal.ZERO : result.getPurchasePrice());
+		hscode.setValue(result.getHscode() == null ? "" : result.getHscode());
+		updateProductSalesPrice(null);
+		updateProductPurchasePrice(null);
 		if (result.getUomId() != null && result.getUomId() != 0) {
 			uomListBox.setValue(result.getUomId());
 		}
@@ -711,6 +808,38 @@ public class StorePOS extends Composite {
 			};
 		});
 	}
+	static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+	@UiHandler("updateProductSalesPrice")
+	void updateProductSalesPrice(KeyUpEvent e) {
+		BigDecimal price = updateProductSalesPrice.getValue() != null ? updateProductSalesPrice.getValue() : BigDecimal.ZERO;
+		BigDecimal taxRate = taxCategoryId.getSelectedRate() != null ? taxCategoryId.getSelectedRate() : BigDecimal.ZERO;
+		price = price.add(price.multiply(taxRate).divide(ONE_HUNDRED));
+		updateProductSalesPriceIncl.setValue(price.setScale(2,RoundingMode.HALF_UP));
+	}
+	
+	@UiHandler("updateProductSalesPriceIncl")
+	void updateProductSalesPriceIncl(KeyUpEvent e) {
+		BigDecimal price = updateProductSalesPriceIncl.getValue() != null ? updateProductSalesPriceIncl.getValue() : BigDecimal.ZERO;
+		BigDecimal taxRate = taxCategoryId.getSelectedRate() != null ? taxCategoryId.getSelectedRate() : BigDecimal.ZERO;
+		price = price.multiply(ONE_HUNDRED).divide(ONE_HUNDRED.add(taxRate),2,RoundingMode.HALF_UP);
+		updateProductSalesPrice.setValue(price.setScale(2,RoundingMode.HALF_UP));
+	}
+	
+	@UiHandler("updateProductPurchasePrice")
+	void updateProductPurchasePrice(KeyUpEvent e) {
+		BigDecimal price = updateProductPurchasePrice.getValue() != null ? updateProductPurchasePrice.getValue() : BigDecimal.ZERO;
+		BigDecimal taxRate = taxCategoryId.getSelectedRate() != null ? taxCategoryId.getSelectedRate() : BigDecimal.ZERO;
+		price = price.add(price.multiply(taxRate).divide(ONE_HUNDRED));
+		updateProductPurchasePriceIncl.setValue(price.setScale(2,RoundingMode.HALF_UP));
+	}
+	
+	@UiHandler("updateProductPurchasePriceIncl")
+	void updateProductPurchasePriceIncl(KeyUpEvent e) {
+		BigDecimal price = updateProductPurchasePriceIncl.getValue() != null ? updateProductPurchasePriceIncl.getValue() : BigDecimal.ZERO;
+		BigDecimal taxRate = taxCategoryId.getSelectedRate() != null ? taxCategoryId.getSelectedRate() : BigDecimal.ZERO;
+		price = price.multiply(ONE_HUNDRED).divide(ONE_HUNDRED.add(taxRate),2,RoundingMode.HALF_UP);
+		updateProductPurchasePrice.setValue(price.setScale(2,RoundingMode.HALF_UP));
+	}
 	
 	protected void initEditCustomer(CustomerBean result) {
 		customerPopup.center();
@@ -719,6 +848,7 @@ public class StorePOS extends Composite {
 		customerName.setValue(result.getName() == null ? "" : result.getName());
 		customerAddress.setValue(result.getAddress() == null ? "" : result.getAddress());
 		customerPhone.setValue(result.getPhone() == null ? "" : result.getPhone());
+		customerTaxNo.setValue(result.getCustomerTaxNo() == null ? "" : result.getCustomerTaxNo());
 		customerCode.setFocus(true);
 	}
 	
@@ -731,20 +861,24 @@ public class StorePOS extends Composite {
 	@UiHandler("editCustomterBtn")
 	void editCustomterBtn(ClickEvent e) {
 		if (salesCustomerId != 0) {
-			loadingPopup.center();
-			service.loadCustomer(salesCustomerId, new AsyncCallback<CustomerBean>() {
-				@Override
-				public void onFailure(Throwable caught) {
-					loadingPopup.hide();
-					displayErrorMesasge(caught.getMessage(), null);
-				}
-				@Override
-				public void onSuccess(CustomerBean result) {
-					loadingPopup.hide();
-					initEditCustomer(result);
-				}
-			});
+			initEditCustomer(salesCustomerId);
 		}
+	}
+	
+	void initEditCustomer(int customerId) {
+		loadingPopup.center();
+		service.loadCustomer(salesCustomerId, new AsyncCallback<CustomerBean>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				loadingPopup.hide();
+				displayErrorMesasge(caught.getMessage(), null);
+			}
+			@Override
+			public void onSuccess(CustomerBean result) {
+				loadingPopup.hide();
+				initEditCustomer(result);
+			}
+		});
 	}
 	
 	@UiHandler("customerPopupCancel")
@@ -760,6 +894,7 @@ public class StorePOS extends Composite {
 		bean.setName(customerName.getValue());
 		bean.setAddress(customerAddress.getValue());
 		bean.setPhone(customerPhone.getValue());
+		bean.setCustomerTaxNo(customerTaxNo.getValue());
 		loadingPopup.center();
 		service.saveCustomer(bean, new AsyncCallback<Void>() {
 			@Override
@@ -834,17 +969,20 @@ public class StorePOS extends Composite {
 	}
 	
 	@UiField
-	DateBox salesHistoryDate;
+	DateBox salesHistoryDate, dateOrdered;
 	
 	@UiField(provided=true)
 	CellTable<OrderBean> salesHistoryTable = null;
 	@UiField(provided=true)
 	CellTable<ProductBean> productListTable = null;
+	@UiField(provided=true)
+	CellTable<CustomerBean> customerListTable = null;
 	@UiField(provided = true)
-	SimplePager pager, productPager;
+	SimplePager pager, productPager, customerPager;
 	
 	ListDataProvider<OrderBean> salesDataList = new ListDataProvider<OrderBean>();
 	ListDataProvider<ProductBean> productList = new ListDataProvider<ProductBean>();
+	ListDataProvider<CustomerBean> customerList = new ListDataProvider<CustomerBean>();
 
 	private void initSalesHistoryDataTable() {
 		salesHistoryTable = new CellTable<OrderBean>(25);
@@ -855,6 +993,14 @@ public class StorePOS extends Composite {
 			}
 		};
 		salesHistoryTable.addColumn(column,"Order No");
+		
+		column = new TextColumn<OrderBean>() {
+			@Override
+			public String getValue(OrderBean object) {
+				return object.getInvoiceNo();
+			}
+		};
+		salesHistoryTable.addColumn(column,"Invoice No");
 		
 		column = new TextColumn<OrderBean>() {
 			@Override
@@ -872,6 +1018,14 @@ public class StorePOS extends Composite {
 		};
 		salesHistoryTable.addColumn(column,"Customer");
 		
+		column = new TextColumn<OrderBean>() {
+			@Override
+			public String getValue(OrderBean object) {
+				return object.getProductDescription();
+			}
+		};
+		salesHistoryTable.addColumn(column,"Products");
+		
 		Header<String> footer = new HistoryTotal();
 		footer.setHeaderStyleNames("textAlignRight");
 		column = new TextColumn<OrderBean>() {
@@ -882,6 +1036,20 @@ public class StorePOS extends Composite {
 		};
 		salesHistoryTable.addColumn(column, new TextHeader("Grand Total"), footer);
 		column.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
+		
+		Column<OrderBean,String> buttonColumn = new Column<OrderBean,String>(new ButtonCell()) {
+			@Override
+			public String getValue(OrderBean object) {
+				return "PRINT";
+			}
+		};
+		salesHistoryTable.addColumn(buttonColumn, "PRINT");
+		buttonColumn.setFieldUpdater(new FieldUpdater<OrderBean, String>() {
+			@Override
+			public void update(int index, OrderBean object, String value) {
+				printOrder(object.getOrderId());
+			}
+		});
 		
 		salesDataList.addDataDisplay(salesHistoryTable);
 		
@@ -972,6 +1140,72 @@ public class StorePOS extends Composite {
 		productPager.setPageSize(25);
 	}
 	
+	private void initCustomerListingTable(){
+		//setting product list table
+		customerListTable = new CellTable<CustomerBean>(25);
+		Column<CustomerBean,String> column = new TextColumn<CustomerBean>() {
+			@Override
+			public String getValue(CustomerBean object) {
+				return object.getCustomerCode();
+			}
+		};
+		customerListTable.addColumn(column, "Code");
+		
+		column = new TextColumn<CustomerBean>() {
+			@Override
+			public String getValue(CustomerBean object) {
+				return object.getName();
+			}
+		};
+		customerListTable.addColumn(column, "Name");
+		
+		column = new TextColumn<CustomerBean>() {
+			@Override
+			public String getValue(CustomerBean object) {
+				return object.getAddress();
+			}
+		};
+		customerListTable.addColumn(column, "Address");
+		
+		column = new TextColumn<CustomerBean>() {
+			@Override
+			public String getValue(CustomerBean object) {
+				return object.getPhone();
+			}
+		};
+		customerListTable.addColumn(column, "Phone");
+		
+		column = new TextColumn<CustomerBean>() {
+			@Override
+			public String getValue(CustomerBean object) {
+				return String.valueOf(object.getOpenBalance());
+			}
+		};
+		customerListTable.addColumn(column, "Open Balance");
+		
+		column = new Column<CustomerBean,String>(new ButtonCell()) {
+			@Override
+			public String getValue(CustomerBean object) {
+				return "EDIT";
+			}
+		};
+		customerListTable.addColumn(column, "Edit");
+		column.setFieldUpdater(new FieldUpdater<CustomerBean, String>() {
+			@Override
+			public void update(int index, CustomerBean object, String value) {
+				initEditCustomer(object.getCustomerId());
+				customerListPopup.hide();
+			}
+		});
+		
+		customerList.addDataDisplay(customerListTable);
+		
+		SimplePager.Resources pagerResources = GWT.create(SimplePager.Resources.class);
+		customerPager = new SimplePager(TextLocation.CENTER, pagerResources, true, 0,true);
+		customerPager.setDisplay(customerListTable);
+		customerPager.setPageSize(25);
+	}
+	
 	@UiHandler("salesHistory")
 	void salesHistory(ClickEvent e) {
 		salesHistoryDate.setValue(new Date());
@@ -1046,6 +1280,53 @@ public class StorePOS extends Composite {
 	@UiHandler("productListCloseBtn")
 	void productListCloseBtn(ClickEvent e) {
 		productListPopup.hide();
+		barcode.setFocus(true);
+	}
+	
+	@UiHandler("customerListCode")
+	void customerListCode(KeyDownEvent e) {
+		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+			customerListSubmit(null);
+		}
+	}
+	
+	@UiHandler("customerListName")
+	void customerListName(KeyDownEvent e) {
+		if (e != null && e.getNativeKeyCode() == KeyCodes.KEY_ENTER) {
+			customerListSubmit(null);
+		}
+	}
+	
+	@UiHandler("listCustomterBtn")
+	void listCustomerBtn(ClickEvent e) {
+		customerListPopup.center();
+	}
+	
+	@UiHandler("customerListSubmit")
+	void customerListSubmit(ClickEvent e) {
+		loadingPopup.center();
+		customerList.getList().clear();
+		customerList.flush();
+		service.searchCustomers(customerListCode.getText(), customerListName.getText(),  
+				new AsyncCallback<List<CustomerBean>>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				loadingPopup.hide();
+				displayErrorMesasge(caught.getMessage(), customerListCode);
+			}
+			@Override
+			public void onSuccess(List<CustomerBean> result) {
+				customerList.getList().addAll(result);
+				customerList.flush();
+				loadingPopup.hide();
+				customerListPopup.center();
+			}
+		});
+	}
+	
+	@UiHandler("customerListCloseBtn")
+	void customerListCloseBtn(ClickEvent e) {
+		customerListPopup.hide();
 		barcode.setFocus(true);
 	}
 	

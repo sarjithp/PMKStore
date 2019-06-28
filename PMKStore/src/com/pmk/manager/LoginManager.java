@@ -32,6 +32,7 @@ public class LoginManager {
 				}
 				user.setUserId(rs.getInt("ad_user_id"));
 				user.setUserName(rs.getString("name"));
+				user.setOrgName(rs.getString("orgname"));
 				int roleId = rs.getInt("ad_role_id");
 				if (roleId == 0) {
 					throw new OperationException("No role set for the user");

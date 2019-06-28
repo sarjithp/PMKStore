@@ -1,6 +1,7 @@
 package com.pmk.shared;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 import com.google.gwt.user.client.rpc.IsSerializable;
 
@@ -12,10 +13,25 @@ public class OrderBean implements IsSerializable {
 	private String paymentType;
 	private int priceListId;
 	private String customerName;
-	private String orderNo;
+	private String orderNo, invoiceNo;
+	private String productDescription;
 	private BigDecimal grandTotal;
 	private int orderId;
+	private Date dateOrdered;
 	
+	
+	public Date getDateOrdered() {
+		return dateOrdered;
+	}
+	public void setDateOrdered(Date dateOrdered) {
+		this.dateOrdered = dateOrdered;
+	}
+	public String getInvoiceNo() {
+		return invoiceNo;
+	}
+	public void setInvoiceNo(String invoiceNo) {
+		this.invoiceNo = invoiceNo;
+	}
 	public int getOrderId() {
 		return orderId;
 	}
@@ -58,5 +74,12 @@ public class OrderBean implements IsSerializable {
 	public void setPriceListId(int priceListId) {
 		this.priceListId = priceListId;
 	}
+	public String getProductDescription() {
+		return productDescription;
+	}
+	public void setProductDescription(String productDescription) {
+		this.productDescription = productDescription;
+	}
+	
 	
 }

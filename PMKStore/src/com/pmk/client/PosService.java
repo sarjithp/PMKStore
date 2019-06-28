@@ -14,6 +14,7 @@ import com.pmk.shared.OperationException;
 import com.pmk.shared.OrderBean;
 import com.pmk.shared.PrintSetup;
 import com.pmk.shared.ProductBean;
+import com.pmk.shared.TaxCategoryBean;
 
 /**
  * The client-side stub for the RPC service.
@@ -60,5 +61,8 @@ public interface PosService extends RemoteService {
 
 	PrintSetup loadPrintSetUp();
 
+	List<TaxCategoryBean> getTaxCategories(String tableName);
+
+	List<CustomerBean> searchCustomers(String code, String name);
 
 }

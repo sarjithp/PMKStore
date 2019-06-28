@@ -21,9 +21,16 @@ public class CustomerBean implements IsSerializable, Suggestion {
 	private String name;
 	private String address;
 	private String phone;
-	private String customerCode;
+	private String customerCode, customerTaxNo;
 	private BigDecimal openBalance;
 	
+	
+	public String getCustomerTaxNo() {
+		return customerTaxNo;
+	}
+	public void setCustomerTaxNo(String customerTaxNo) {
+		this.customerTaxNo = customerTaxNo;
+	}
 	public BigDecimal getOpenBalance() {
 		return openBalance;
 	}
@@ -62,10 +69,18 @@ public class CustomerBean implements IsSerializable, Suggestion {
 	}
 	@Override
 	public String getDisplayString() {
-		return name;
+		String retString =  name ;
+		if (address != null) {
+			retString += "<br/>" + address;
+		}
+		if (phone != null) {
+			retString += "<br/>" + phone;
+		}
+		return retString;
 	}
 	@Override
 	public String getReplacementString() {
 		return name;
 	}
+	
 }
