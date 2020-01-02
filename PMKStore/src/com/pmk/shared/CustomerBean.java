@@ -17,14 +17,19 @@ public class CustomerBean implements IsSerializable, Suggestion {
 	public CustomerBean() {
 	}
 	
-	private int customerId;
+	private int customerId, deliveryLocationId;
 	private String name;
 	private String address;
 	private String phone;
 	private String customerCode, customerTaxNo;
 	private BigDecimal openBalance;
-	
-	
+
+	public int getDeliveryLocationId() {
+		return deliveryLocationId;
+	}
+	public void setDeliveryLocationId(int deliveryLocationId) {
+		this.deliveryLocationId = deliveryLocationId;
+	}
 	public String getCustomerTaxNo() {
 		return customerTaxNo;
 	}
@@ -70,9 +75,6 @@ public class CustomerBean implements IsSerializable, Suggestion {
 	@Override
 	public String getDisplayString() {
 		String retString =  name ;
-		if (address != null) {
-			retString += "<br/>" + address;
-		}
 		if (phone != null) {
 			retString += "<br/>" + phone;
 		}

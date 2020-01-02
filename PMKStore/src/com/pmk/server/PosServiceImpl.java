@@ -174,10 +174,10 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 	}
 
 	@Override
-	public List<OrderBean> getSalesHistory(long date,String paymentType) {
+	public List<OrderBean> getSalesHistory(long fromDateLong, long toDateLong, String paymentType) {
 		HttpServletRequest request = this.getThreadLocalRequest();
 		Properties ctx = POSEnv.getCtx(request);
-		return OrderManager.getSalesHistory(ctx, date, paymentType);
+		return OrderManager.getSalesHistory(ctx, fromDateLong, toDateLong, paymentType);
 	}
 
 	@Override
@@ -211,7 +211,6 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 
 	@Override
 	public void printOrder(int orderId) throws Exception {
-		System.out.println("print order");
 		HttpServletRequest request = this.getThreadLocalRequest();
 		HttpServletResponse response = this.getThreadLocalResponse();
 		Properties ctx = POSEnv.getCtx(request);
@@ -264,6 +263,13 @@ public class PosServiceImpl extends RemoteServiceServlet implements
 		HttpServletRequest request = this.getThreadLocalRequest();
 		Properties ctx = POSEnv.getCtx(request);
 		return CustomerManager.searchCustomers(ctx,code,name);
+	}
+
+	@Override
+	public OrderBean loadOrderForEdit(int orderId) {
+		HttpServletRequest request = this.getThreadLocalRequest();
+		Properties ctx = POSEnv.getCtx(request);
+		return OrderManager.loadOrder(ctx,orderId,null);
 	}
 	
 }

@@ -38,7 +38,7 @@ public interface PosService extends RemoteService {
 
 	OrderBean completeOrder(List<CartItem> items, OrderBean order) throws OperationException;
 
-	List<OrderBean> getSalesHistory(long timelong, String paymentType);
+	List<OrderBean> getSalesHistory(long fromDatelong, long toDateLong, String paymentType);
 
 	List<Suggestion> getProductSuggestions(String trim);
 
@@ -65,4 +65,6 @@ public interface PosService extends RemoteService {
 
 	List<CustomerBean> searchCustomers(String code, String name);
 
+	OrderBean loadOrderForEdit(int orderId);
 }
+

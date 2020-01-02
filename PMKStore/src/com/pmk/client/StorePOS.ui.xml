@@ -12,6 +12,12 @@
 					<td><g:TextBox ui:field="userName" enabled="false"></g:TextBox></td>
 					<td nowrap="">Org : </td>
 					<td><g:TextBox ui:field="orgName" enabled="false"></g:TextBox></td>
+				</tr>
+				<tr>
+					<td nowrap="">Order No : </td>
+					<td><g:TextBox ui:field="orderNo"></g:TextBox></td>
+					<td nowrap="">Date : </td>
+					<td><d:DateBox ui:field="dateOrdered"></d:DateBox></td>
 					<td nowrap="">Type : </td>
 					<td>
 						<g:ListBox ui:field="saleTypeList">
@@ -23,16 +29,6 @@
 						  	</g:item>
 						</g:ListBox>
 					</td>
-				</tr>
-				<tr>
-					<td nowrap="">Order No : </td>
-					<td><g:TextBox ui:field="orderNo"></g:TextBox></td>
-					<td nowrap="">Date : </td>
-					<td><d:DateBox ui:field="dateOrdered"></d:DateBox></td>
-					<td nowrap="">Customer : </td>
-					<td><g:SuggestBox ui:field="customerSuggest"></g:SuggestBox></td>
-					<td nowrap="">Balance : </td>
-					<td><g:TextBox ui:field="customerBalance" enabled="false"></g:TextBox></td>
 				</tr>
 				<tr>
 					<td nowrap="">Code : </td>
@@ -73,6 +69,27 @@
 			</table>
 		</td>
 		<td width="25%">
+			<fieldset>
+				<legend>Customer</legend>
+				<table>
+					<tr>
+						<td nowrap="">Customer : </td>
+						<td><g:SuggestBox ui:field="customerSuggest"></g:SuggestBox></td>
+					</tr>
+					<tr>
+						<td nowrap="">Phone : </td>
+						<td><g:TextBox ui:field="deliveryPhone"></g:TextBox></td>
+					</tr>
+					<tr>
+						<td nowrap="">Delivery Address : </td>
+						<td><g:TextBox ui:field="deliveryAddress"></g:TextBox></td>
+					</tr>
+					<tr>
+						<td nowrap="">Balance : </td>
+						<td><g:TextBox ui:field="customerBalance" enabled="false"></g:TextBox></td>
+					</tr>
+				</table>
+			</fieldset>
 			<table >
 				<tr>
 					<td><g:Button ui:field="addProductBtn" styleName="actionBtn">ADD PRODUCT</g:Button></td>
@@ -236,7 +253,7 @@
 						<td nowrap="">Address : </td><td><g:TextBox ui:field="customerAddress"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td nowrap="">Mobile : </td><td><g:TextBox ui:field="customerPhone"></g:TextBox></td>
+						<td nowrap="">Phone : </td><td><g:TextBox ui:field="customerPhone"></g:TextBox></td>
 					</tr>
 					<tr>
 						<td colspan="2">
@@ -266,11 +283,13 @@
 			</g:HTMLPanel>
 		</p:POSDialogBox>
 		
-		<p:POSDialogBox ui:field="salesHistoryPopup" animationEnabled="true" glassEnabled="true" visible="false" styleName="gwt-DialogBox gwt-DialogBox1">
+		<p:POSDialogBox ui:field="salesHistoryPopup" animationEnabled="true" glassEnabled="true" visible="false" 
+			styleName="gwt-DialogBox gwt-DialogBox2">
 			<g:HTMLPanel>
 				<table>
 					<tr>
-						<td>Date : </td><td><d:DateBox ui:field="salesHistoryDate"></d:DateBox></td>
+						<td>From Date : </td><td><d:DateBox ui:field="salesHistoryFromDate"></d:DateBox></td>
+						<td>To Date : </td><td><d:DateBox ui:field="salesHistoryToDate"></d:DateBox></td>
 						<td>Type : </td>
 						<td>
 							<g:ListBox ui:field="historySaleTypeList">

@@ -204,12 +204,14 @@ public class StorePOS extends Composite {
 				CustomerBean bean = (CustomerBean) event.getSelectedItem();
 				if (bean.getCustomerId() != 0) {
 					salesCustomerId = bean.getCustomerId();
+					deliveryLocationId = bean.getDeliveryLocationId();
+					deliveryAddress.setValue(bean.getAddress(),false);
+					deliveryPhone.setValue(bean.getPhone());
 					customerBalance.setText(bean.getOpenBalance() == null ? "0" : String.valueOf(bean.getOpenBalance()));
 					saleTypeList.setSelectedIndex(1);
 				}
 			}
 		});
-		
 	}
 		
 	private void initCartTable() {
@@ -241,7 +243,7 @@ public class StorePOS extends Composite {
 				return object.getUom();
 			}
 		};
-		cartTable.addColumn(column, "Uom");
+//		cartTable.addColumn(column, "Uom");
 		
 		Header<String> footer = new QtyTotal();
 		footer.setHeaderStyleNames("textAlignRight");
@@ -324,7 +326,9 @@ public class StorePOS extends Composite {
 		initShortcuts();
 		dateOrdered.setFormat(new DateBox.DefaultFormat 
 				(DateTimeFormat.getFormat("dd MMM, yyyy")));
-		salesHistoryDate.setFormat(new DateBox.DefaultFormat 
+		salesHistoryFromDate.setFormat(new DateBox.DefaultFormat 
+				(DateTimeFormat.getFormat("dd MMM, yyyy")));
+		salesHistoryToDate.setFormat(new DateBox.DefaultFormat 
 				(DateTimeFormat.getFormat("dd MMM, yyyy")));
 	}
 	
@@ -428,7 +432,7 @@ public class StorePOS extends Composite {
 	@UiField
 	TextBox barcode, grantTotalBox, userpin, userName, orgName, updateProductCode, updateProductDescription, customerCode, customerName,
 	customerAddress, customerPhone, customerBalance, totalCountBox, newCategoryName, productListCode, productListDescr, printDevice,
-	printWidth, customerTaxNo, hscode, orderNo, customerListCode,customerListName;
+	printWidth, customerTaxNo, hscode, orderNo, customerListCode,customerListName, deliveryAddress, deliveryPhone;
 	
 	@UiField
 	BigDecimalBox updateProductSalesPrice,updateProductLimitPrice, qtyBox, priceBox, updateProductPurchasePrice, customerPayAmt,
@@ -531,8 +535,14 @@ public class StorePOS extends Composite {
 		(addedFromBarcode ? barcode : description).setFocus(true);
 	}
 	
+	@UiHandler("deliveryAddress")
+	void deliveryAddress(ValueChangeEvent<String> v) {
+		deliveryLocationId = 0;
+	}
+	
 	Focusable defaultFocus = null;
-	int salesCustomerId = 0;
+	int salesCustomerId = 0, deliveryLocationId = 0;
+	int editOrderId = 0;
 	int lastCompletedOrderId = 0;
 	
 	@UiField 
@@ -567,6 +577,10 @@ public class StorePOS extends Composite {
 		priceBox.setText("");
 		selectionModel.clear();
 		salesCustomerId = 0;
+		editOrderId = 0;
+		deliveryLocationId = 0;
+		deliveryAddress.setValue("");
+		deliveryPhone.setValue("");
 		saleTypeList.setSelectedIndex(0);
 		customerBalance.setValue("0");
 		customerSuggest.setText("");
@@ -580,9 +594,23 @@ public class StorePOS extends Composite {
 		OrderBean order = new OrderBean();
 		order.setCustomerId(getCustomerID());
 		order.setPaymentType(saleTypeList.getValue(saleTypeList.getSelectedIndex()));
+		order.setDeliveryAddress(deliveryAddress.getValue());
+		order.setDeliveryLocationId(deliveryLocationId);
 		order.setPriceListId(user.getPriceListId());
 		order.setOrderNo(orderNo.getValue());
 		order.setDateOrdered(dateOrdered.getValue());
+		order.setOrderId(editOrderId);
+		return order;
+	}
+	
+	private OrderBean setOrderDetailsToScreen(OrderBean order) {
+		editOrderId = order.getOrderId();
+		customerSuggest.setValue(order.getCustomerName(), false);
+		salesCustomerId = order.getCustomerId();
+		deliveryAddress.setValue(order.getDeliveryAddress());
+		deliveryLocationId = order.getDeliveryLocationId();
+		orderNo.setValue(order.getOrderNo());
+		dateOrdered.setValue(order.getDateOrdered());
 		return order;
 	}
 	
@@ -969,7 +997,7 @@ public class StorePOS extends Composite {
 	}
 	
 	@UiField
-	DateBox salesHistoryDate, dateOrdered;
+	DateBox salesHistoryFromDate, salesHistoryToDate, dateOrdered;
 	
 	@UiField(provided=true)
 	CellTable<OrderBean> salesHistoryTable = null;
@@ -1051,6 +1079,20 @@ public class StorePOS extends Composite {
 			}
 		});
 		
+		buttonColumn = new Column<OrderBean,String>(new ButtonCell()) {
+			@Override
+			public String getValue(OrderBean object) {
+				return "EDIT";
+			}
+		};
+		salesHistoryTable.addColumn(buttonColumn, "EDIT");
+		buttonColumn.setFieldUpdater(new FieldUpdater<OrderBean, String>() {
+			@Override
+			public void update(int index, OrderBean object, String value) {
+				initEditOrder(object.getOrderId());
+			}
+		});
+		
 		salesDataList.addDataDisplay(salesHistoryTable);
 		
 		SimplePager.Resources pagerResources = GWT.create(SimplePager.Resources.class);
@@ -1058,7 +1100,6 @@ public class StorePOS extends Composite {
 		pager.setDisplay(salesHistoryTable);
 		pager.setPageSize(25);
 	}
-		
 		
 	private void initProductListingTable(){
 		//setting product list table
@@ -1208,7 +1249,8 @@ public class StorePOS extends Composite {
 	
 	@UiHandler("salesHistory")
 	void salesHistory(ClickEvent e) {
-		salesHistoryDate.setValue(new Date());
+		salesHistoryFromDate.setValue(new Date());
+		salesHistoryToDate.setValue(new Date());
 		historySaleTypeList.setSelectedIndex(0);
 		salesHistoryPopup.center();
 		salesHistorySubmit(null);
@@ -1217,7 +1259,8 @@ public class StorePOS extends Composite {
 	@UiHandler("salesHistorySubmit")
 	void salesHistorySubmit(ClickEvent e) {
 		salesDataList.getList().clear();
-		service.getSalesHistory(salesHistoryDate.getValue().getTime(), historySaleTypeList.getValue(historySaleTypeList.getSelectedIndex()),
+		service.getSalesHistory(salesHistoryFromDate.getValue().getTime(), salesHistoryToDate.getValue().getTime(), 
+				historySaleTypeList.getValue(historySaleTypeList.getSelectedIndex()),
 				new AsyncCallback<List<OrderBean>>() {
 			@Override
 			public void onFailure(Throwable caught) {
@@ -1234,6 +1277,25 @@ public class StorePOS extends Composite {
 	@UiHandler("salesHistoryCloseBtn")
 	void salesHistoryClose(ClickEvent e) {
 		salesHistoryPopup.hide();
+	}
+	
+	protected void initEditOrder(int orderId) {
+		loadingPopup.center();
+		service.loadOrderForEdit(orderId,new AsyncCallback<OrderBean>() {
+			@Override
+			public void onFailure(Throwable caught) {
+				displayErrorMesasge("Unable to load order", defaultFocus);
+				loadingPopup.hide();
+			}
+			@Override
+			public void onSuccess(OrderBean order) {
+				setOrderDetailsToScreen(order);
+				for (CartItem item : order.getLines()) {
+					addOrUpdateDataList(item);
+				}
+				loadingPopup.hide();
+			}
+		});
 	}
 	
 	@UiHandler("productListCode")

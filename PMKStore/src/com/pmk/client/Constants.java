@@ -1,6 +1,11 @@
 package com.pmk.client;
 
+import java.math.BigDecimal;
+
 public class Constants {
+	
+	public static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+	
 	public static final String CTX_CURRENCY_ID = "C_Currency_ID";
 
 	public static final String PRINT_DEVICE = "PRINT_DEVICE";
@@ -21,4 +26,6 @@ public class Constants {
 	 * PRINT_TYPE = A4
 	 */
 	public static final String PRINT_TYPE_VALUE_A4 = "PRINT_TYPE_VALUE_A4";
+	
+	
 }

@@ -8,6 +8,7 @@ import java.math.RoundingMode;
 
 import com.google.gwt.user.client.rpc.IsSerializable;
 import com.google.gwt.view.client.ProvidesKey;
+import com.pmk.client.Constants;
 
 /**
  * @author sarjith
@@ -27,9 +28,14 @@ public class CartItem implements IsSerializable {
 	private String barcode;
 	private String uom;
 	private BigDecimal taxRate;
+	private int orderLineId;
 	
-	static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
-	
+	public int getOrderLineId() {
+		return orderLineId;
+	}
+	public void setOrderLineId(int orderLineId) {
+		this.orderLineId = orderLineId;
+	}
 	public BigDecimal getTaxRate() {
 		return taxRate;
 	}
@@ -40,10 +46,10 @@ public class CartItem implements IsSerializable {
 		return unitPrice.multiply(qtyOrdered);
 	}
 	public BigDecimal getTotalTaxAmt() {
-		return getExclTotalAmt().multiply(taxRate).divide(ONE_HUNDRED, RoundingMode.HALF_UP);
+		return getExclTotalAmt().multiply(taxRate).divide(Constants.ONE_HUNDRED, RoundingMode.HALF_UP);
 	}
 	public BigDecimal getInclPrice() {
-		return unitPrice.add(unitPrice.multiply(taxRate).divide(ONE_HUNDRED, RoundingMode.HALF_UP));
+		return unitPrice.add(unitPrice.multiply(taxRate).divide(Constants.ONE_HUNDRED, RoundingMode.HALF_UP));
 	}
 	public String getUom() {
 		return uom;

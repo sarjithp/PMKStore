@@ -78,7 +78,7 @@ public class CustomerManager {
 
 	public static List<Suggestion> getCustomerSuggestions(Properties ctx,
 			String text) {
-		String sql = "select b.c_bpartner_id, b.name, totalopenbalance,l.address1,bpl.phone " +
+		String sql = "select b.c_bpartner_id, b.name, totalopenbalance,l.address1,bpl.phone, bpl.c_bpartner_location_id " +
 				" from c_bpartner b join c_bpartner_location bpl on b.c_bpartner_id = bpl.c_bpartner_id and isbillto='Y' "
 				+ " join c_location l on l.c_location_id = bpl.c_location_id "+
 				" where iscustomer='Y' and b.ad_client_id = " + Env.getAD_Client_ID(ctx) +
@@ -99,6 +99,7 @@ public class CustomerManager {
 				bean.setOpenBalance(rs.getBigDecimal("totalopenbalance"));
 				bean.setAddress(rs.getString("address1"));
 				bean.setPhone(rs.getString("phone"));
+				bean.setDeliveryLocationId(rs.getInt("c_bpartner_location_id"));
 				list.add(bean);
 			}
 		} catch (SQLException e) {
@@ -154,5 +155,18 @@ public class CustomerManager {
 		}
 		
 		return list;
+	}
+
+	public static MBPartnerLocation createNewShipLocation(Properties ctx, MBPartner partner, String deliveryAddress,
+			String trxName) throws OperationException {
+		MLocation location = new MLocation(ctx, 0, null);
+		location.setAddress1(deliveryAddress);
+		PoHandler.savePO(location);
+		MBPartnerLocation bpLocation = new MBPartnerLocation(partner);
+		bpLocation.setC_Location_ID(location.get_ID());
+		bpLocation.setIsBillTo(false);
+		bpLocation.setIsShipTo(true);
+		PoHandler.savePO(bpLocation);
+		return bpLocation;
 	}
 }

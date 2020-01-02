@@ -45,8 +45,8 @@ public interface PosServiceAsync {
 	void completeOrder(List<CartItem> items, OrderBean order,
 			AsyncCallback<OrderBean> asyncCallback);
 
-	void getSalesHistory(long timelong,
-			String paymentType, AsyncCallback<List<OrderBean>> asyncCallback);
+	void getSalesHistory(long fromDatelong,
+			long toDateLong, String paymentType, AsyncCallback<List<OrderBean>> asyncCallback);
 
 	void getProductSuggestions(String trim,
 			AsyncCallback<List<Suggestion>> asyncCallback);
@@ -72,5 +72,7 @@ public interface PosServiceAsync {
 
 	void searchCustomers(String code, String name,
 			AsyncCallback<List<CustomerBean>> asyncCallback);
+
+	void loadOrderForEdit(int orderId, AsyncCallback<OrderBean> asyncCallback);
 
 }

@@ -2,6 +2,7 @@ package com.pmk.shared;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 import com.google.gwt.user.client.rpc.IsSerializable;
 
@@ -18,8 +19,28 @@ public class OrderBean implements IsSerializable {
 	private BigDecimal grandTotal;
 	private int orderId;
 	private Date dateOrdered;
+	private int deliveryLocationId;
+	private String deliveryAddress;
+	private List<CartItem> lines;
 	
-	
+	public List<CartItem> getLines() {
+		return lines;
+	}
+	public void setLines(List<CartItem> lines) {
+		this.lines = lines;
+	}
+	public int getDeliveryLocationId() {
+		return deliveryLocationId;
+	}
+	public void setDeliveryLocationId(int deliveryLocationId) {
+		this.deliveryLocationId = deliveryLocationId;
+	}
+	public String getDeliveryAddress() {
+		return deliveryAddress;
+	}
+	public void setDeliveryAddress(String deliveryAddress) {
+		this.deliveryAddress = deliveryAddress;
+	}
 	public Date getDateOrdered() {
 		return dateOrdered;
 	}

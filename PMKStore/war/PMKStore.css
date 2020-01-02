@@ -32,7 +32,7 @@
 }
 
 .cartContainer {
-	height: 450px;
+	height: 400px;
 	overflow: auto;
 }
 
@@ -63,7 +63,7 @@
 	text-align: right !important;
 }
 .actionBtn {
-	width : 85px;
+	width : 80px;
 	text-transform: capitalize;
 }
 .input100 {
