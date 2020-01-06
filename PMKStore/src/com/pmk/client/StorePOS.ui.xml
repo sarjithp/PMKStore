@@ -5,7 +5,7 @@
 	xmlns:p="urn:import:com.pmk.client.widgets"
 	xmlns:d="urn:import:com.google.gwt.user.datepicker.client">
 	<g:HTMLPanel>
-		<table><tr><td width="75%">
+		<table><tr><td width="70%">
 			<table>
 				<tr>
 					<td nowrap="">User : </td>
@@ -68,7 +68,7 @@
 				</tr>
 			</table>
 		</td>
-		<td width="25%">
+		<td width="30%">
 			<fieldset>
 				<legend>Customer</legend>
 				<table>
@@ -81,11 +81,11 @@
 						<td><g:TextBox ui:field="deliveryPhone"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td nowrap="">Delivery Address : </td>
+						<td>Delivery Address : </td>
 						<td><g:TextBox ui:field="deliveryAddress"></g:TextBox></td>
 					</tr>
 					<tr>
-						<td nowrap="">Description : </td>
+						<td nowrap="">Details : </td>
 						<td><g:TextBox ui:field="orderDescription"></g:TextBox></td>
 					</tr>
 					<tr>

@@ -312,7 +312,6 @@ public class OrderManager {
 	public static void printOrder(Properties ctx, int orderId, HttpServletResponse response) throws Exception {
 		String printType = MSysConfig.getValue(Constants.PRINT_TYPE,null, Env.getAD_Client_ID(ctx));
 		String printDevice = MSysConfig.getValue(Constants.PRINT_DEVICE,null, Env.getAD_Client_ID(ctx));
-		System.out.println(printType);
 		MOrder order = new MOrder(ctx, orderId, null);
 		MInvoice[] invoices = null;//order.getInvoices();
 		if (printType != null && Constants.PRINT_TYPE_VALUE_SLIP.equalsIgnoreCase(printType)) {//slip printing
@@ -386,7 +385,6 @@ public class OrderManager {
 	public static void printOrder2(Properties ctx, int orderId, HttpServletResponse response) throws Exception {
 		String printType = MSysConfig.getValue(Constants.PRINT_TYPE,null, Env.getAD_Client_ID(ctx));
 		String printDevice = MSysConfig.getValue(Constants.PRINT_DEVICE,null, Env.getAD_Client_ID(ctx));
-		System.out.println(printType);
 		MOrder order = new MOrder(ctx, orderId, null);
 		MInvoice[] invoices = null;//order.getInvoices();
 		if (printType != null && Constants.PRINT_TYPE_VALUE_SLIP.equalsIgnoreCase(printType)) {//slip printing

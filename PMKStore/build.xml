@@ -161,7 +161,7 @@
   </target>
 	
   <target name="deploy" depends="war" description="Deploy war file to adempireQA">
-	<copy todir="/home/sarjith/workspace/apache-tomcat-7.0.62/webapps/" overwrite="true">
+	<copy todir="/home/sarjith/eclipse-neon-workspace/apache-tomcat-9.0.30/webapps/" overwrite="true">
 		<fileset file="PMK.war">
 		</fileset>
 	</copy>
@@ -169,7 +169,7 @@
 
   <target name="tmp" depends="javac" description="to create war file by skipping gwtc if there is only server side change">
     <zip destfile="PMK.war" basedir="war"/>
-    <copy todir="/home/sarjith/workspace/apache-tomcat-7.0.62/webapps/" overwrite="true" file="PMK.war" />
+    <copy todir="/home/sarjith/eclipse-neon-workspace/apache-tomcat-9.0.30/webapps/" overwrite="true" file="PMK.war" />
   </target>
 
   <target name="clean" description="Cleans this project">
