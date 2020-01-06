@@ -2,7 +2,7 @@
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="taxInvoice" pageWidth="595" pageHeight="600" columnWidth="581" leftMargin="7" rightMargin="7" topMargin="11" bottomMargin="11" uuid="d32ce8f4-115f-4acf-92d3-8fabda52e0b8">
 	<property name="ireport.zoom" value="1.5"/>
 	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="9"/>
+	<property name="ireport.y" value="345"/>
 	<parameter name="c_order_id" class="java.math.BigDecimal"/>
 	<queryString>
 		<![CDATA[select
@@ -747,11 +747,11 @@ Amount]]></text>
 				<reportElement x="511" y="0" width="1" height="15" uuid="e1f22460-13f5-4139-878c-9b052f4acebc"/>
 			</line>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="343" y="29" width="231" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
+				<reportElement positionType="Float" x="358" y="30" width="124" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["For "+$F{orgdesc}!=null?$F{orgdesc}:($F{orgname}!=null?$F{orgname}:"")]]></textFieldExpression>
+				<textFieldExpression><![CDATA["For "+$F{orgname}]]></textFieldExpression>
 			</textField>
 			<line>
 				<reportElement x="340" y="28" width="1" height="57" uuid="d700744d-ead2-40e4-b46c-2f8f6e520bb7"/>
@@ -767,11 +767,11 @@ Amount]]></text>
 				<textFieldExpression><![CDATA[$F{grandtotal}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="473" y="72" width="100" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
+				<reportElement x="362" y="73" width="100" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
-				<text><![CDATA[Authorized Signatory]]></text>
+				<text><![CDATA[Proprietor]]></text>
 			</staticText>
 			<textField>
 				<reportElement x="223" y="1" width="22" height="14" backcolor="#FEFEFE" uuid="1bee1514-e810-48e3-83e6-98f75dab2529"/>
