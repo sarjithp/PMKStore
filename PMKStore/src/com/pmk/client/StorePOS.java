@@ -432,7 +432,7 @@ public class StorePOS extends Composite {
 	@UiField
 	TextBox barcode, grantTotalBox, userpin, userName, orgName, updateProductCode, updateProductDescription, customerCode, customerName,
 	customerAddress, customerPhone, customerBalance, totalCountBox, newCategoryName, productListCode, productListDescr, printDevice,
-	printWidth, customerTaxNo, hscode, orderNo, customerListCode,customerListName, deliveryAddress, deliveryPhone;
+	printWidth, customerTaxNo, hscode, orderNo, customerListCode,customerListName, deliveryAddress, deliveryPhone, orderDescription;
 	
 	@UiField
 	BigDecimalBox updateProductSalesPrice,updateProductLimitPrice, qtyBox, priceBox, updateProductPurchasePrice, customerPayAmt,
@@ -587,6 +587,7 @@ public class StorePOS extends Composite {
 		lastCompletedOrderId = 0;
 		orderNo.setValue("");
 		dateOrdered.setValue(new Date());
+		orderDescription.setValue("");
 		barcode.setFocus(true);
 	}
 	
@@ -600,6 +601,7 @@ public class StorePOS extends Composite {
 		order.setOrderNo(orderNo.getValue());
 		order.setDateOrdered(dateOrdered.getValue());
 		order.setOrderId(editOrderId);
+		order.setDescription(orderDescription.getValue());
 		return order;
 	}
 	
@@ -611,6 +613,7 @@ public class StorePOS extends Composite {
 		deliveryLocationId = order.getDeliveryLocationId();
 		orderNo.setValue(order.getOrderNo());
 		dateOrdered.setValue(order.getDateOrdered());
+		orderDescription.setValue(order.getDescription());
 		return order;
 	}
 	
@@ -1090,6 +1093,7 @@ public class StorePOS extends Composite {
 			@Override
 			public void update(int index, OrderBean object, String value) {
 				initEditOrder(object.getOrderId());
+				salesHistoryClose(null);
 			}
 		});
 		

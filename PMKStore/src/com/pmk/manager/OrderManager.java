@@ -112,6 +112,7 @@ public class OrderManager {
 		order.setC_DocTypeTarget_ID(MDocType.DOCSUBTYPESO_POSOrder);
 		order.setDocStatus(MOrder.STATUS_Drafted);
 		order.setDocAction(MOrder.DOCACTION_Complete);
+		order.setDescription(bean.getDescription());
 		
 		//checking the order number entered by user
 		String orderNo = bean.getOrderNo();
@@ -543,6 +544,7 @@ public class OrderManager {
 		bean.setPaymentType(morder.getPaymentRule());
 		bean.setDateOrdered(morder.getDateOrdered());
 		bean.setPriceListId(morder.getM_PriceList_ID());
+		bean.setDescription(morder.getDescription());
 		
 		MBPartner partner = (MBPartner) morder.getC_BPartner();
 		bean.setCustomerId(partner.get_ID());

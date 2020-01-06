@@ -85,6 +85,10 @@
 						<td><g:TextBox ui:field="deliveryAddress"></g:TextBox></td>
 					</tr>
 					<tr>
+						<td nowrap="">Description : </td>
+						<td><g:TextBox ui:field="orderDescription"></g:TextBox></td>
+					</tr>
+					<tr>
 						<td nowrap="">Balance : </td>
 						<td><g:TextBox ui:field="customerBalance" enabled="false"></g:TextBox></td>
 					</tr>

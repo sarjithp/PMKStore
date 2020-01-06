@@ -21,8 +21,15 @@ public class OrderBean implements IsSerializable {
 	private Date dateOrdered;
 	private int deliveryLocationId;
 	private String deliveryAddress;
+	private String description;
 	private List<CartItem> lines;
 	
+	public String getDescription() {
+		return description;
+	}
+	public void setDescription(String description) {
+		this.description = description;
+	}
 	public List<CartItem> getLines() {
 		return lines;
 	}
