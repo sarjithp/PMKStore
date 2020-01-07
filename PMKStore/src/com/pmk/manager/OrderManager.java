@@ -105,6 +105,7 @@ public class OrderManager {
 			MBPartnerLocation newLocation = CustomerManager.createNewShipLocation(ctx, partner, bean.getDeliveryAddress(), trxName);
 			order.setC_BPartner_Location_ID(newLocation.get_ID());
 		}
+		boolean isGSTCustomer = partner.getTaxID() != null && !partner.getTaxID().isEmpty();
 		
 		order.setM_PriceList_ID(bean.getPriceListId());
 		order.setPaymentRule("cash".equalsIgnoreCase(bean.getPaymentType()) ? MOrder.PAYMENTRULE_Cash : MOrder.PAYMENTRULE_OnCredit);
@@ -147,6 +148,16 @@ public class OrderManager {
 			orderline.setM_Product_ID(item.getProductId());
 			orderline.setQty(item.getQtyOrdered());
 			orderline.setPrice(item.getUnitPrice());
+			
+			if (isGSTCustomer) {
+				MProduct product = orderline.getProduct();
+				String sql = "AD_Client_ID = " + Env.getAD_Client_ID(ctx) + " AND C_TaxCategory_ID = " + product.getC_TaxCategory_ID()
+					+ " and IsDefault='N' and isactive='Y' and coalesce(parent_tax_id,0) = 0";
+				int[] ids = MTax.getAllIDs(MTax.Table_Name, sql, trxName);
+				if (ids != null && ids.length > 0) {
+					orderline.setC_Tax_ID(ids[0]);
+				}
+			}
 			
 			PoHandler.savePO(orderline);
 			orderlines.add(orderline);
