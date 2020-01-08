@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="taxInvoice" pageWidth="595" pageHeight="600" columnWidth="581" leftMargin="7" rightMargin="7" topMargin="11" bottomMargin="11" uuid="d32ce8f4-115f-4acf-92d3-8fabda52e0b8">
-	<property name="ireport.zoom" value="1.5"/>
+	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="153"/>
+	<property name="ireport.y" value="0"/>
 	<parameter name="c_order_id" class="java.math.BigDecimal"/>
 	<queryString>
 		<![CDATA[select
@@ -58,17 +58,17 @@ ordl.linenetamt,ordl.discount AS discount,
 prd.unitsperpack,prd.uuid,
 uom.uomsymbol,
 ordh.istaxincluded,
-cgst.rate as cgst, sgst.rate as sgst,coalesce(cess.rate,0) as cess,
+cgst.rate as cgst, sgst.rate as sgst,
 round(ordl.linenetamt * cgst.rate / 100,2) as cgstamt,
 round(ordl.linenetamt * sgst.rate / 100,2) as sgstamt,
-round(ordl.linenetamt * coalesce(cess.rate,0) / 100,2) as cessamt,
+coalesce(ot.taxamt,0) as cessamt,
 bp.istaxexempt, ordl.pricelist,
 ordl.pricelist as mrp, ordl.linenetamt as grossvalue,
 0 AS discountamt,
 CASE WHEN ordl.discount>0 THEN 1 ELSE 0 END AS discountitem,
 null as binarydata,
 ordl.priceactual as unitprice,
-ordh.grandtotal,
+ordh.grandtotal,ordh.description,
 case when inv.paymentrule='S' then 'CHEQUE'
 when inv.paymentrule='B' then 'CASH'
 when inv.paymentrule='K' then 'CARD'
@@ -99,7 +99,8 @@ left join c_uom uom on (ordl.c_uom_id = uom.c_uom_id)
 left join c_tax tax on (tax.c_tax_id = ordl.c_tax_id)
 left join c_tax cgst on tax.c_tax_id = cgst.parent_tax_id and lower(cgst.name) like '%cgst%'
 left join c_tax sgst on tax.c_tax_id = sgst.parent_tax_id and lower(sgst.name) like '%sgst%'
-left join c_tax cess on tax.c_tax_id = cess.parent_tax_id and lower(cess.name) like '%cess%'
+left join (c_ordertax ot join c_tax cess on ot.c_tax_id = cess.c_tax_id and lower(cess.name) like '%cess%')
+on ordh.c_order_id = ot.c_order_id and ot.c_order_id = $P{c_order_id}
 left join c_bpartner bp on (bp.c_bpartner_id=ordh.c_bpartner_id)
 left join c_bpartner_location bpl on (bpl.c_bpartner_id = bp.c_bpartner_id and bpl.isbillto='Y')
 left join c_location bploc on (bploc.c_location_id = bpl.c_location_id)
@@ -158,7 +159,6 @@ order by ordl.line]]>
 	<field name="istaxincluded" class="java.lang.String"/>
 	<field name="cgst" class="java.math.BigDecimal"/>
 	<field name="sgst" class="java.math.BigDecimal"/>
-	<field name="cess" class="java.math.BigDecimal"/>
 	<field name="cgstamt" class="java.math.BigDecimal"/>
 	<field name="sgstamt" class="java.math.BigDecimal"/>
 	<field name="cessamt" class="java.math.BigDecimal"/>
@@ -171,6 +171,7 @@ order by ordl.line]]>
 	<field name="binarydata" class="java.lang.String"/>
 	<field name="unitprice" class="java.math.BigDecimal"/>
 	<field name="grandtotal" class="java.math.BigDecimal"/>
+	<field name="description" class="java.lang.String"/>
 	<field name="paymode" class="java.lang.String"/>
 	<field name="totaldiscount" class="java.lang.Integer"/>
 	<field name="totalpayamt" class="java.lang.Integer"/>
@@ -730,35 +731,25 @@ Amount]]></text>
 				<reportElement x="0" y="0" width="581" height="88" forecolor="#FEFEFE" uuid="c69a4f0b-9695-42b0-91d4-8410fb90c052"/>
 			</rectangle>
 			<line>
-				<reportElement x="5" y="0" width="1" height="15" uuid="fff80669-286a-440f-aab1-dfdac95cba4e"/>
-			</line>
-			<staticText>
-				<reportElement x="9" y="30" width="90" height="14" uuid="4826d91f-0c9c-42d8-b268-f6fd20e2fdd9"/>
-				<textElement textAlignment="Left" verticalAlignment="Top">
-					<font size="8"/>
-				</textElement>
-				<text><![CDATA[Amount(in words) :]]></text>
-			</staticText>
-			<line>
-				<reportElement x="511" y="0" width="1" height="15" uuid="e1f22460-13f5-4139-878c-9b052f4acebc"/>
+				<reportElement x="5" y="0" width="1" height="34" uuid="fff80669-286a-440f-aab1-dfdac95cba4e"/>
 			</line>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="467" y="30" width="105" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
+				<reportElement positionType="Float" x="467" y="39" width="105" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA["For "+$F{orgname}]]></textFieldExpression>
 			</textField>
 			<line>
-				<reportElement x="340" y="28" width="1" height="57" uuid="d700744d-ead2-40e4-b46c-2f8f6e520bb7"/>
+				<reportElement x="369" y="28" width="1" height="57" uuid="d700744d-ead2-40e4-b46c-2f8f6e520bb7"/>
 			</line>
 			<line>
 				<reportElement x="5" y="28" width="1" height="57" uuid="e109a814-ee97-45f7-aab9-49586dbbe9af"/>
 			</line>
 			<textField pattern="0.00">
-				<reportElement x="513" y="1" width="61" height="14" backcolor="#FEFEFE" uuid="dc7f466a-6d86-4784-bb5e-ffe78d1e7d53"/>
+				<reportElement x="511" y="19" width="61" height="14" backcolor="#FEFEFE" uuid="dc7f466a-6d86-4784-bb5e-ffe78d1e7d53"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font size="7"/>
+					<font size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{grandtotal}]]></textFieldExpression>
 			</textField>
@@ -769,25 +760,6 @@ Amount]]></text>
 				</textElement>
 				<text><![CDATA[Authorized Signatory]]></text>
 			</staticText>
-			<textField>
-				<reportElement x="223" y="1" width="22" height="14" backcolor="#FEFEFE" uuid="1bee1514-e810-48e3-83e6-98f75dab2529"/>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font size="7"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$V{totalqty}]]></textFieldExpression>
-			</textField>
-			<line>
-				<reportElement x="440" y="0" width="1" height="15" uuid="02e3adec-fe74-4cae-8e38-81e9fb9181a3"/>
-			</line>
-			<line>
-				<reportElement x="468" y="0" width="1" height="15" uuid="4c4149c1-4200-4827-9417-e8678179ca5a"/>
-			</line>
-			<line>
-				<reportElement x="315" y="0" width="1" height="15" uuid="cb409841-1677-4d50-b704-65f59f5159f3"/>
-			</line>
-			<line>
-				<reportElement x="5" y="15" width="571" height="1" uuid="16cc03e6-1228-4482-ab0b-9431dc80363c"/>
-			</line>
 			<staticText>
 				<reportElement x="9" y="73" width="328" height="11" uuid="0d6b6e2d-8a32-4cd6-a3be-424534790f52"/>
 				<textElement verticalAlignment="Bottom">
@@ -799,38 +771,23 @@ Amount]]></text>
 				<reportElement x="5" y="0" width="571" height="1" uuid="9f8e06f4-2f0a-4aa8-a19c-09213f3edff6"/>
 			</line>
 			<staticText>
-				<reportElement x="10" y="1" width="136" height="14" backcolor="#FEFEFE" uuid="1d4d01e4-5c2d-4e09-a649-ddeecc8ff0f9"/>
+				<reportElement x="371" y="19" width="136" height="14" backcolor="#FEFEFE" uuid="1d4d01e4-5c2d-4e09-a649-ddeecc8ff0f9"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Total]]></text>
 			</staticText>
 			<line>
-				<reportElement x="221" y="0" width="1" height="15" uuid="f0389c49-6062-4dd1-8bd4-dd6b17dc2b92"/>
-			</line>
-			<line>
 				<reportElement x="5" y="85" width="571" height="1" uuid="aa9f2567-5c95-4f71-a1b7-d20efc793c02"/>
 			</line>
 			<line>
-				<reportElement x="575" y="0" width="1" height="15" uuid="03806d7e-6501-4466-a3d5-a26efb8e3cc6"/>
+				<reportElement x="575" y="0" width="1" height="33" uuid="03806d7e-6501-4466-a3d5-a26efb8e3cc6"/>
 			</line>
 			<line>
-				<reportElement x="369" y="0" width="1" height="15" uuid="64362cce-e51a-42b6-96df-16c75fc231f9"/>
-			</line>
-			<line>
-				<reportElement x="397" y="0" width="1" height="15" uuid="837fb963-6982-4f5c-b0f7-0db4b00dbdc4"/>
-			</line>
-			<line>
-				<reportElement x="276" y="0" width="1" height="15" uuid="92fd761b-79b0-4fd4-8387-4408271b363c"/>
+				<reportElement x="369" y="0" width="1" height="34" uuid="64362cce-e51a-42b6-96df-16c75fc231f9"/>
 			</line>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement x="86" y="30" width="251" height="26" isPrintWhenDetailOverflows="true" uuid="0e8831bf-e783-43fa-9c8e-26a89af9684e"/>
-				<textElement verticalAlignment="Top">
-					<font fontName="SansSerif" size="8"/>
-				</textElement>
-			</textField>
-			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="9" y="48" width="328" height="14" uuid="8624aea2-9de6-4d84-88eb-70e8d2ca2ddf"/>
+				<reportElement positionType="Float" x="10" y="39" width="328" height="14" uuid="8624aea2-9de6-4d84-88eb-70e8d2ca2ddf"/>
 				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font size="8"/>
 				</textElement>
@@ -840,11 +797,22 @@ Amount]]></text>
 				<reportElement x="575" y="28" width="1" height="57" uuid="9d5f3dd2-ca8f-4756-a4c7-94c98c574d7d"/>
 			</line>
 			<line>
-				<reportElement x="246" y="0" width="1" height="15" uuid="9eb60c36-d427-4d15-9d39-dde0e2fe17e6"/>
+				<reportElement x="5" y="34" width="571" height="1" uuid="0542f1ba-ed05-4b15-9a86-815e70ca23ec"/>
 			</line>
-			<line>
-				<reportElement x="5" y="27" width="571" height="1" uuid="0542f1ba-ed05-4b15-9a86-815e70ca23ec"/>
-			</line>
+			<textField pattern="0.00">
+				<reportElement x="510" y="5" width="61" height="14" backcolor="#FEFEFE" uuid="09981b02-0a41-4864-b544-2e8a4363a25d"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="7" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cessamt}.signum()  > 0 ? $F{cessamt} : ""]]></textFieldExpression>
+			</textField>
+			<textField pattern="0.00">
+				<reportElement x="371" y="5" width="136" height="14" backcolor="#FEFEFE" uuid="faf656d1-d7ec-4b30-baba-6ffdf864f742"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font size="7" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cessamt}.signum() > 0 ? "CESS" : ""]]></textFieldExpression>
+			</textField>
 		</band>
 	</lastPageFooter>
 </jasperReport>
