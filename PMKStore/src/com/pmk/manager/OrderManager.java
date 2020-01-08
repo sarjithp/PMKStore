@@ -237,12 +237,12 @@ public class OrderManager {
 		if (orderNo != null && !orderNo.trim().isEmpty()) {
 			MInvoice[] invoices = order.getInvoices();
 			for (MInvoice inv : invoices) {
-				if (!MInvoice.DOCSTATUS_Completed.equalsIgnoreCase(inv.getDocStatus())) {
-					
+				inv.setDocumentNo(orderNo);
+				PoHandler.savePO(inv);
+				invoice = inv;
+				if (MInvoice.DOCSTATUS_Completed.equalsIgnoreCase(inv.getDocStatus())) {
 				}
 			}
-			invoice.setDocumentNo(orderNo);
-			PoHandler.savePO(invoice);
 		}
 		
 		if (MOrder.PAYMENTRULE_Cash.equalsIgnoreCase(order.getPaymentRule())) {

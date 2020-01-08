@@ -480,6 +480,27 @@ order by ordl.line]]>
 				</textElement>
 				<textFieldExpression><![CDATA[($F{orgaddr1}!=null?$F{orgaddr1}:"")+($F{orgaddr2}!=null?$F{orgaddr2}:"")+($F{ocity}!=null?", "+$F{ocity}:"")+($F{ophone1}!=null?"\nTel : "+$F{ophone1}.toString():"")]]></textFieldExpression>
 			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="9" y="174" width="56" height="12" isPrintWhenDetailOverflows="true" uuid="a4c86885-42be-464e-948d-f3a4480672d5"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description} != null ? "Vehicle No" : ""]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="65" y="174" width="10" height="12" isPrintWhenDetailOverflows="true" uuid="f198211f-48f6-4b75-afaf-6838b028975d"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description} != null ? ":" : ""]]></textFieldExpression>
+			</textField>
+			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
+				<reportElement x="71" y="174" width="217" height="12" isPrintWhenDetailOverflows="true" uuid="9e16e50b-09ca-460b-b40d-08a9ffacd2f2"/>
+				<textElement verticalAlignment="Middle">
+					<font size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
 		</band>
 	</pageHeader>
 	<columnHeader>
