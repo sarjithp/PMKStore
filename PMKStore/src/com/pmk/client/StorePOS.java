@@ -99,7 +99,7 @@ public class StorePOS extends Composite {
 		}
 	}
 	
-	class ExcludedTotal extends Header<String> {
+/*	class ExcludedTotal extends Header<String> {
 		public ExcludedTotal() {
 			super(new TextCell());
 		}
@@ -127,7 +127,7 @@ public class StorePOS extends Composite {
 			}
 			return String.valueOf(total);
 		}
-	}
+	}*/
 	
 	class LineTotal extends Header<String> {
 		public LineTotal() {
@@ -138,7 +138,7 @@ public class StorePOS extends Composite {
 		public String getValue() {
 			BigDecimal total = BigDecimal.ZERO;
 			for (CartItem item : dataList.getList()) {
-				total = total.add(item.getExclTotalAmt().add(item.getTotalTaxAmt()).setScale(2, RoundingMode.HALF_UP));
+				total = total.add(item.getPriceEntered().multiply(item.getQtyOrdered()));
 			}
 			grantTotalBox.setText(String.valueOf(total));
 			totalCountBox.setText(String.valueOf(dataList.getList().size()));
@@ -259,7 +259,7 @@ public class StorePOS extends Composite {
 		column = new TextColumn<CartItem>() {
 			@Override
 			public String getValue(CartItem object) {
-				return String.valueOf(object.getUnitPrice());
+				return String.valueOf(object.getPriceEntered());
 			}
 		};
 		cartTable.addColumn(column, "Price");
@@ -267,7 +267,7 @@ public class StorePOS extends Composite {
 
 
 
-		footer = new ExcludedTotal();
+/*		footer = new ExcludedTotal();
 		footer.setHeaderStyleNames("textAlignRight");
 		column = new TextColumn<CartItem>() {
 			@Override
@@ -287,14 +287,14 @@ public class StorePOS extends Composite {
 			}
 		};
 		cartTable.addColumn(column, new TextHeader("Tax Amt"), footer);
-		column.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);
+		column.setHorizontalAlignment(HasHorizontalAlignment.ALIGN_RIGHT);*/
 		
 		footer = new LineTotal();
 		footer.setHeaderStyleNames("textAlignRight");
 		column = new TextColumn<CartItem>() {
 			@Override
 			public String getValue(CartItem object) {
-				return String.valueOf(object.getExclTotalAmt().add(object.getTotalTaxAmt()).setScale(2, RoundingMode.HALF_UP));
+				return String.valueOf(object.getPriceEntered().multiply(object.getQtyOrdered()));
 			}
 		};
 		cartTable.addColumn(column, new TextHeader("Total"), footer);
@@ -310,7 +310,7 @@ public class StorePOS extends Composite {
 				CartItem item = selectionModel.getSelectedObject();
 				if (item != null) {
 					qtyBox.setValue(item.getQtyOrdered());
-					priceBox.setValue(item.getInclPrice().setScale(2, RoundingMode.HALF_UP));
+					priceBox.setValue(item.getPriceEntered().setScale(2, RoundingMode.HALF_UP));
 					qtyBox.setFocus(true);
 					qtyBox.selectAll();
 				}
@@ -527,8 +527,8 @@ public class StorePOS extends Composite {
 		CartItem item = selectionModel.getSelectedObject();
 		BigDecimal price = priceBox.getValue();
 		if (item != null) {
-			price = price.multiply(ONE_HUNDRED).divide(ONE_HUNDRED.add(item.getTaxRate()),2, RoundingMode.HALF_UP);
-			item.setUnitPrice(price);
+//			price = price.multiply(ONE_HUNDRED).divide(ONE_HUNDRED.add(item.getTaxRate()),4, RoundingMode.HALF_UP);
+			item.setPriceEntered(price);
 			dataList.flush();
 			dataList.refresh();
 		}

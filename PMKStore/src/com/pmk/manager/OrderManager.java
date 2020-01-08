@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -38,6 +39,7 @@ import org.compiere.model.MInvoice;
 import org.compiere.model.MOrder;
 import org.compiere.model.MOrderLine;
 import org.compiere.model.MPayment;
+import org.compiere.model.MPriceList;
 import org.compiere.model.MProduct;
 import org.compiere.model.MProductPrice;
 import org.compiere.model.MSysConfig;
@@ -55,6 +57,8 @@ import com.pmk.util.PMKPrintformat;
 import com.pmk.util.PoHandler;
 
 public class OrderManager {
+	
+	static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
 
 	public static CartItem createCartItem(Properties ctx, int productId, int priceListId, int bpartnerId) throws OperationException {
 		CartItem item = new CartItem();
@@ -71,21 +75,32 @@ public class OrderManager {
 		
 		MProductPrice price = ProductManager.getProductPrice(ctx,productId, priceListId);
 		
-		item.setUnitPrice(price.getPriceStd().setScale(2));
+		BigDecimal priceStd = price.getPriceStd();
 		
-		//setting tax rate to tax
-		MTaxCategory taxCategory = (MTaxCategory) product.getC_TaxCategory(); 
-		MTax tax = taxCategory.getDefaultTax();
+		if (!MPriceList.get(ctx, priceListId, null).isTaxIncluded()) {
+			//setting tax rate to tax
+			MTaxCategory taxCategory = (MTaxCategory) product.getC_TaxCategory(); 
+			MTax tax = taxCategory.getDefaultTax();
+			BigDecimal taxRate = getTaxRate(ctx, tax);
+			
+			priceStd = priceStd.add(priceStd.multiply(taxRate).divide(ONE_HUNDRED,4,RoundingMode.HALF_UP));
+		}
+		item.setPriceEntered(priceStd);
+		
+		return item;
+	}
+	
+	private static BigDecimal getTaxRate(Properties ctx, MTax tax) {
+		BigDecimal taxRate = BigDecimal.ZERO;
 		if (!tax.isSummary()) {
-			item.setTaxRate(tax.getRate());
+			taxRate = tax.getRate();
 		} else {
 			MTax[] childTaxes = tax.getChildTaxes(false);
 			for (MTax childTax : childTaxes) {
-				item.setTaxRate((item.getTaxRate() == null ? BigDecimal.ZERO : item.getTaxRate()).add(childTax.getRate()));
+				taxRate = taxRate.add(childTax.getRate());
 			}
 		}
-		
-		return item;
+		return taxRate;
 	}
 
 	public static OrderBean completeOrder(Properties ctx, OrderBean bean,
@@ -147,8 +162,11 @@ public class OrderManager {
 			}
 			orderline.setM_Product_ID(item.getProductId());
 			orderline.setQty(item.getQtyOrdered());
-			orderline.setPrice(item.getUnitPrice());
-			
+
+			/** GST+Cess will be the default tax set to the line
+			 * if its a GST customer, then cess is not applicable here
+			 * so non-default tax is set
+			 */
 			if (isGSTCustomer) {
 				MProduct product = orderline.getProduct();
 				String sql = "AD_Client_ID = " + Env.getAD_Client_ID(ctx) + " AND C_TaxCategory_ID = " + product.getC_TaxCategory_ID()
@@ -157,7 +175,22 @@ public class OrderManager {
 				if (ids != null && ids.length > 0) {
 					orderline.setC_Tax_ID(ids[0]);
 				}
+			} else {
+				orderline.setTax();//so as to set the detault tax
 			}
+			
+			BigDecimal unitPrice = item.getPriceEntered();
+			
+			/**
+			 * Entered price will be inclusive price
+			 * if the PL is exclusive then we have to calculate the excl price from this.
+			 */
+			if (!order.getM_PriceList().isTaxIncluded()) {
+				BigDecimal taxRate = getTaxRate(ctx, MTax.get(ctx, orderline.getC_Tax_ID()));
+				unitPrice = unitPrice.multiply(ONE_HUNDRED).divide(ONE_HUNDRED.add(taxRate),4, RoundingMode.HALF_UP);
+			}
+			
+			orderline.setPrice(unitPrice);
 			
 			PoHandler.savePO(orderline);
 			orderlines.add(orderline);
@@ -572,14 +605,24 @@ public class OrderManager {
 			item.setDescription(product.getDescription());
 			item.setBarcode(product.getValue());
 			item.setUom(product.getUOMSymbol());
+			
 			item.setQtyOrdered(orderLine.getQtyOrdered());
-			item.setUnitPrice(orderLine.getPriceActual());
-			item.setTaxRate(orderLine.getC_Tax().getRate());
+			BigDecimal taxRate = getTaxRate(ctx, MTax.get(ctx, orderLine.getC_Tax_ID()));
+			item.setTaxRate(taxRate);
+			BigDecimal unitPrice = orderLine.getPriceActual();
+			/**
+			 *  what we get from here is exlcusive price if its a exclusive PL
+			 * we should convert it to inclusive
+			 */
+			if (!morder.isTaxIncluded()) {
+				unitPrice = unitPrice.add(unitPrice.multiply(taxRate).divide(ONE_HUNDRED,4,RoundingMode.HALF_UP));
+			}
+			item.setPriceEntered(unitPrice);
 			item.setOrderLineId(orderLine.get_ID());
 			items.add(item);
 		}
 		
 		return bean;
 	}
-
+	
 }

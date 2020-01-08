@@ -2,7 +2,7 @@
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="taxInvoice" pageWidth="595" pageHeight="600" columnWidth="581" leftMargin="7" rightMargin="7" topMargin="11" bottomMargin="11" uuid="d32ce8f4-115f-4acf-92d3-8fabda52e0b8">
 	<property name="ireport.zoom" value="1.5"/>
 	<property name="ireport.x" value="0"/>
-	<property name="ireport.y" value="345"/>
+	<property name="ireport.y" value="153"/>
 	<parameter name="c_order_id" class="java.math.BigDecimal"/>
 	<queryString>
 		<![CDATA[select
@@ -58,19 +58,16 @@ ordl.linenetamt,ordl.discount AS discount,
 prd.unitsperpack,prd.uuid,
 uom.uomsymbol,
 ordh.istaxincluded,
-tax.rate/4,
-round(totaltaxrate/4,2) gstrate,
-tax.rate/100 multiplier,
-(tax.rate/100)+1 newmultiplier,
-bp.istaxexempt,
-invl.taxamt taxamount,
-ordl.pricelist, invl.taxAmt,invl.taxamt/2 AS gstamt,
-ordl.pricelist as mrp,
-case when ordh.istaxincluded='Y' then ordl.linenetamt - otax.taxamt else ordl.linenetamt end as grossvalue,
+cgst.rate as cgst, sgst.rate as sgst,coalesce(cess.rate,0) as cess,
+round(ordl.linenetamt * cgst.rate / 100,2) as cgstamt,
+round(ordl.linenetamt * sgst.rate / 100,2) as sgstamt,
+round(ordl.linenetamt * coalesce(cess.rate,0) / 100,2) as cessamt,
+bp.istaxexempt, ordl.pricelist,
+ordl.pricelist as mrp, ordl.linenetamt as grossvalue,
 0 AS discountamt,
 CASE WHEN ordl.discount>0 THEN 1 ELSE 0 END AS discountitem,
 null as binarydata,
-(case when ordh.istaxincluded='Y' then ordl.linenetamt - otax.taxamt else ordl.linenetamt end)/ordl.qtyordered as unitprice,
+ordl.priceactual as unitprice,
 ordh.grandtotal,
 case when inv.paymentrule='S' then 'CHEQUE'
 when inv.paymentrule='B' then 'CASH'
@@ -100,14 +97,14 @@ left join c_invoiceline invl on invl.c_orderline_id = ordl.c_orderline_id
 left join m_product prd on (ordl.m_product_id = prd.m_product_id)
 left join c_uom uom on (ordl.c_uom_id = uom.c_uom_id)
 left join c_tax tax on (tax.c_tax_id = ordl.c_tax_id)
-left join (select sum(taxamt) as taxamt,c_order_id,sum(rate)  as totaltaxrate from c_ordertax ot join c_tax t on ot.c_tax_id = t.c_tax_id where c_order_id=$P{c_order_id}
-group by c_order_id) otax on (otax.c_order_id = ordh.c_order_id)
+left join c_tax cgst on tax.c_tax_id = cgst.parent_tax_id and lower(cgst.name) like '%cgst%'
+left join c_tax sgst on tax.c_tax_id = sgst.parent_tax_id and lower(sgst.name) like '%sgst%'
+left join c_tax cess on tax.c_tax_id = cess.parent_tax_id and lower(cess.name) like '%cess%'
 left join c_bpartner bp on (bp.c_bpartner_id=ordh.c_bpartner_id)
 left join c_bpartner_location bpl on (bpl.c_bpartner_id = bp.c_bpartner_id and bpl.isbillto='Y')
 left join c_location bploc on (bploc.c_location_id = bpl.c_location_id)
 left join c_region bpreg on (bpreg.c_region_id = bploc.c_region_id)
 where ordh.c_order_id = $P{c_order_id}
-and ordh.docstatus in ('CO','CL','DR')
 order by ordl.line]]>
 	</queryString>
 	<field name="orgname" class="java.lang.String"/>
@@ -159,15 +156,14 @@ order by ordl.line]]>
 	<field name="uuid" class="java.lang.String"/>
 	<field name="uomsymbol" class="java.lang.String"/>
 	<field name="istaxincluded" class="java.lang.String"/>
-	<field name="?column?" class="java.math.BigDecimal"/>
-	<field name="gstrate" class="java.math.BigDecimal"/>
-	<field name="multiplier" class="java.math.BigDecimal"/>
-	<field name="newmultiplier" class="java.math.BigDecimal"/>
+	<field name="cgst" class="java.math.BigDecimal"/>
+	<field name="sgst" class="java.math.BigDecimal"/>
+	<field name="cess" class="java.math.BigDecimal"/>
+	<field name="cgstamt" class="java.math.BigDecimal"/>
+	<field name="sgstamt" class="java.math.BigDecimal"/>
+	<field name="cessamt" class="java.math.BigDecimal"/>
 	<field name="istaxexempt" class="java.lang.String"/>
-	<field name="taxamount" class="java.math.BigDecimal"/>
 	<field name="pricelist" class="java.math.BigDecimal"/>
-	<field name="taxamt" class="java.math.BigDecimal"/>
-	<field name="gstamt" class="java.math.BigDecimal"/>
 	<field name="mrp" class="java.math.BigDecimal"/>
 	<field name="grossvalue" class="java.math.BigDecimal"/>
 	<field name="discountamt" class="java.lang.Integer"/>
@@ -668,7 +664,7 @@ Amount]]></text>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="7"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{gstrate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{cgst}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
 				<reportElement x="278" y="1" width="36" height="13" isPrintWhenDetailOverflows="true" uuid="036b9bd4-10b4-462a-bfbb-e201546a50d6"/>
@@ -682,14 +678,14 @@ Amount]]></text>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="7"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{gstamt}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{cgstamt}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
 				<reportElement x="513" y="1" width="61" height="13" isPrintWhenDetailOverflows="true" uuid="15dca9d3-67fe-464a-ab29-90075d43a908"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="7"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{linetotalamt}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{linenetamt}.add($F{cgstamt}).add($F{sgstamt}).add($F{cessamt})]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="178" y="1" width="42" height="13" isPrintWhenDetailOverflows="true" uuid="a5153860-05a2-43f4-ac8f-c20b7f662773"/>
@@ -710,14 +706,14 @@ Amount]]></text>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="7"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{gstrate}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{sgst}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" pattern="###0.00" isBlankWhenNull="true">
 				<reportElement x="470" y="1" width="40" height="13" isPrintWhenDetailOverflows="true" uuid="f13c8ad1-b1f5-441a-b805-d7f9ebc31a06"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="7"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{gstamt}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{sgstamt}]]></textFieldExpression>
 			</textField>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
 				<reportElement x="248" y="1" width="27" height="13" isPrintWhenDetailOverflows="true" uuid="52cfa7da-a2f0-4b57-b314-964456b52892"/>
@@ -747,7 +743,7 @@ Amount]]></text>
 				<reportElement x="511" y="0" width="1" height="15" uuid="e1f22460-13f5-4139-878c-9b052f4acebc"/>
 			</line>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="358" y="30" width="124" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
+				<reportElement positionType="Float" x="467" y="30" width="105" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8" isBold="true"/>
 				</textElement>
@@ -767,11 +763,11 @@ Amount]]></text>
 				<textFieldExpression><![CDATA[$F{grandtotal}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="362" y="73" width="100" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
+				<reportElement x="468" y="73" width="91" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
 				<textElement>
 					<font size="8"/>
 				</textElement>
-				<text><![CDATA[Proprietor]]></text>
+				<text><![CDATA[Authorized Signatory]]></text>
 			</staticText>
 			<textField>
 				<reportElement x="223" y="1" width="22" height="14" backcolor="#FEFEFE" uuid="1bee1514-e810-48e3-83e6-98f75dab2529"/>
