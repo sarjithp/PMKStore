@@ -109,7 +109,18 @@ public class OrderManager {
 		boolean editingExistingOrder = bean.getOrderId() != 0;
 		MOrder order = new MOrder(ctx, bean.getOrderId(), trxName);
 		if (editingExistingOrder) {//if its editing of existing order
+			List<MPayment> payments = MPayment.getOfOrder(order);
+			for (MPayment payment : payments) {
+				PoHandler.processIt(payment, MPayment.ACTION_Void);
+			}
 			PoHandler.processIt(order, MOrder.ACTION_ReActivate);
+			MInvoice[] invoices = order.getInvoices();
+			for (MInvoice inv : invoices) {
+				if (!MInvoice.DOCSTATUS_Completed.equalsIgnoreCase(inv.getDocStatus())) {
+					inv.setDocumentNo(inv.getDocumentNo() + "_" + inv.getC_Invoice_ID());
+					PoHandler.savePO(inv);
+				}
+			}
 		}
 		
 		MBPartner partner = MBPartner.get(ctx, bean.getCustomerId());
@@ -140,7 +151,7 @@ public class OrderManager {
 			}
 			order.setDocumentNo(orderNo);
 		}
-		if (bean.getDateOrdered() != null && bean.getDateOrdered().before(getTodaysDate())) {
+		if (bean.getDateOrdered() != null) {
 			order.setDateOrdered(new Timestamp(bean.getDateOrdered().getTime()));
 			order.setDateAcct(order.getDateOrdered());
 			order.setDatePrinted(order.getDateOrdered());
@@ -237,10 +248,10 @@ public class OrderManager {
 		if (orderNo != null && !orderNo.trim().isEmpty()) {
 			MInvoice[] invoices = order.getInvoices();
 			for (MInvoice inv : invoices) {
-				inv.setDocumentNo(orderNo);
-				PoHandler.savePO(inv);
-				invoice = inv;
 				if (MInvoice.DOCSTATUS_Completed.equalsIgnoreCase(inv.getDocStatus())) {
+					inv.setDocumentNo(orderNo);
+					PoHandler.savePO(inv);
+					invoice = inv;
 				}
 			}
 		}
@@ -288,10 +299,10 @@ public class OrderManager {
 		String sql = "SELECT o.c_order_id,o.documentno, o.paymentrule, i.grandtotal, b.name, max(p.description) as description,"
 				+ " i.documentno as invoiceno "
 				+ " from c_order o join c_orderline ol on o.c_order_id = ol.c_order_id"
-				+ " LEFT JOIN C_Invoice i on o.c_order_id = i.c_order_id "
+				+ " LEFT JOIN C_Invoice i on o.c_order_id = i.c_order_id and i.docstatus in ('CO','CL') "
 				+ " JOIN m_product p on ol.m_product_id = p.m_product_id "
 				+ " JOIN c_bpartner b on o.c_bpartner_id = b.c_bpartner_id "
-				+ " WHERE o.ad_client_id = " + Env.getAD_Client_ID(ctx) 
+				+ " WHERE o.docstatus in ('CO','CL') and o.ad_client_id = " + Env.getAD_Client_ID(ctx) 
 				+ " AND o.dateordered::date >= ? ::date "
 				+ " AND o.dateordered::date <= ? ::date ";
 		if ("cash".equalsIgnoreCase(paymentType)) {

@@ -53,7 +53,7 @@ prd.name prdname,
 coalesce(ordl.description,prd.description) as prddesc,
 null as hsn,null AS freeitem,
 ordl.qtyOrdered,
-ordl.priceactual,invl.linetotalamt,
+ordl.priceactual,ordl.linenetamt as linetotalamt,
 ordl.linenetamt,ordl.discount AS discount,
 prd.unitsperpack,prd.uuid,
 uom.uomsymbol,
@@ -84,7 +84,7 @@ else '' end as paymode,
 0 as checkAmt,
 0 as voucheramt
 from c_order ordh
-left join c_invoice inv on (inv.c_order_id=ordh.c_order_id)
+left join c_invoice inv on inv.c_order_id=ordh.c_order_id and inv.docstatus in ('CO','CL')
 left join ad_client cl on (cl.ad_client_id = ordh.ad_client_id)
 left join ad_org org on (org.ad_org_id = ordh.ad_org_id)
 left join ad_orginfo oinfo on oinfo.ad_org_id = org.ad_org_id
@@ -92,8 +92,7 @@ left join c_location oloc on oinfo.c_location_id = oloc.c_location_id
 left join c_region oreg on (oloc.c_region_id = oreg.c_region_id)
 left join c_country ocountry on (ocountry.c_country_id = oloc.c_country_id)
 left join u_posterminal ter on (ter.u_posterminal_id = ordh.c_pos_id)
-left join c_orderline ordl on (ordl.c_order_id = ordh.c_order_id)
-left join c_invoiceline invl on invl.c_orderline_id = ordl.c_orderline_id
+left join c_orderline ordl on ordl.c_order_id = ordh.c_order_id and ordl.qtyordered != 0
 left join m_product prd on (ordl.m_product_id = prd.m_product_id)
 left join c_uom uom on (ordl.c_uom_id = uom.c_uom_id)
 left join c_tax tax on (tax.c_tax_id = ordl.c_tax_id)
@@ -752,38 +751,32 @@ Amount]]></text>
 				<reportElement x="0" y="0" width="581" height="88" forecolor="#FEFEFE" uuid="c69a4f0b-9695-42b0-91d4-8410fb90c052"/>
 			</rectangle>
 			<line>
-				<reportElement x="5" y="0" width="1" height="34" uuid="fff80669-286a-440f-aab1-dfdac95cba4e"/>
+				<reportElement x="5" y="0" width="1" height="85" uuid="fff80669-286a-440f-aab1-dfdac95cba4e"/>
 			</line>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="467" y="39" width="105" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
+				<reportElement positionType="Float" x="443" y="38" width="105" height="14" isPrintWhenDetailOverflows="true" uuid="5459cde8-46e9-40be-85e5-73d38dcb1c8e"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA["For "+$F{orgname}]]></textFieldExpression>
 			</textField>
-			<line>
-				<reportElement x="369" y="28" width="1" height="57" uuid="d700744d-ead2-40e4-b46c-2f8f6e520bb7"/>
-			</line>
-			<line>
-				<reportElement x="5" y="28" width="1" height="57" uuid="e109a814-ee97-45f7-aab9-49586dbbe9af"/>
-			</line>
 			<textField pattern="0.00">
-				<reportElement x="511" y="19" width="61" height="14" backcolor="#FEFEFE" uuid="dc7f466a-6d86-4784-bb5e-ffe78d1e7d53"/>
+				<reportElement x="498" y="19" width="75" height="14" backcolor="#FEFEFE" uuid="dc7f466a-6d86-4784-bb5e-ffe78d1e7d53"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{grandtotal}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="468" y="73" width="91" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
-				<textElement>
+				<reportElement x="443" y="74" width="91" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
+				<textElement verticalAlignment="Middle">
 					<font size="8"/>
 				</textElement>
 				<text><![CDATA[Authorized Signatory]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="9" y="73" width="328" height="11" uuid="0d6b6e2d-8a32-4cd6-a3be-424534790f52"/>
-				<textElement verticalAlignment="Bottom">
+				<textElement verticalAlignment="Middle">
 					<font size="8"/>
 				</textElement>
 				<text><![CDATA[Certified that the particulars given above are true and correct]]></text>
@@ -792,7 +785,7 @@ Amount]]></text>
 				<reportElement x="5" y="0" width="571" height="1" uuid="9f8e06f4-2f0a-4aa8-a19c-09213f3edff6"/>
 			</line>
 			<staticText>
-				<reportElement x="371" y="19" width="136" height="14" backcolor="#FEFEFE" uuid="1d4d01e4-5c2d-4e09-a649-ddeecc8ff0f9"/>
+				<reportElement x="442" y="19" width="50" height="14" backcolor="#FEFEFE" uuid="1d4d01e4-5c2d-4e09-a649-ddeecc8ff0f9"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8" isBold="true"/>
 				</textElement>
@@ -802,33 +795,30 @@ Amount]]></text>
 				<reportElement x="5" y="85" width="571" height="1" uuid="aa9f2567-5c95-4f71-a1b7-d20efc793c02"/>
 			</line>
 			<line>
-				<reportElement x="575" y="0" width="1" height="33" uuid="03806d7e-6501-4466-a3d5-a26efb8e3cc6"/>
+				<reportElement x="575" y="0" width="1" height="86" uuid="03806d7e-6501-4466-a3d5-a26efb8e3cc6"/>
 			</line>
 			<line>
-				<reportElement x="369" y="0" width="1" height="34" uuid="64362cce-e51a-42b6-96df-16c75fc231f9"/>
+				<reportElement x="440" y="0" width="1" height="84" uuid="64362cce-e51a-42b6-96df-16c75fc231f9"/>
 			</line>
 			<textField isStretchWithOverflow="true" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="10" y="39" width="328" height="14" uuid="8624aea2-9de6-4d84-88eb-70e8d2ca2ddf"/>
-				<textElement textAlignment="Left" verticalAlignment="Top">
+				<reportElement positionType="Float" x="9" y="38" width="328" height="14" uuid="8624aea2-9de6-4d84-88eb-70e8d2ca2ddf"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="8"/>
 				</textElement>
 				<textFieldExpression><![CDATA["Payment Mode : "+$F{paymode}]]></textFieldExpression>
 			</textField>
 			<line>
-				<reportElement x="575" y="28" width="1" height="57" uuid="9d5f3dd2-ca8f-4756-a4c7-94c98c574d7d"/>
-			</line>
-			<line>
 				<reportElement x="5" y="34" width="571" height="1" uuid="0542f1ba-ed05-4b15-9a86-815e70ca23ec"/>
 			</line>
 			<textField pattern="0.00">
-				<reportElement x="510" y="5" width="61" height="14" backcolor="#FEFEFE" uuid="09981b02-0a41-4864-b544-2e8a4363a25d"/>
+				<reportElement x="498" y="5" width="75" height="14" backcolor="#FEFEFE" uuid="09981b02-0a41-4864-b544-2e8a4363a25d"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="7" isBold="false"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{cessamt}.signum()  > 0 ? $F{cessamt} : ""]]></textFieldExpression>
 			</textField>
 			<textField pattern="0.00">
-				<reportElement x="371" y="5" width="136" height="14" backcolor="#FEFEFE" uuid="faf656d1-d7ec-4b30-baba-6ffdf864f742"/>
+				<reportElement x="442" y="5" width="50" height="14" backcolor="#FEFEFE" uuid="faf656d1-d7ec-4b30-baba-6ffdf864f742"/>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font size="7" isBold="false"/>
 				</textElement>
