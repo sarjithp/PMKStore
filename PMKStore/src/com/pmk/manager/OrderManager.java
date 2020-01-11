@@ -83,7 +83,7 @@ public class OrderManager {
 			MTax tax = taxCategory.getDefaultTax();
 			BigDecimal taxRate = getTaxRate(ctx, tax);
 			
-			priceStd = priceStd.add(priceStd.multiply(taxRate).divide(ONE_HUNDRED,4,RoundingMode.HALF_UP));
+			priceStd = priceStd.add(priceStd.multiply(taxRate).divide(ONE_HUNDRED,2,RoundingMode.HALF_UP));
 		}
 		item.setPriceEntered(priceStd);
 		
@@ -635,5 +635,5 @@ public class OrderManager {
 		
 		return bean;
 	}
-	
+
 }
