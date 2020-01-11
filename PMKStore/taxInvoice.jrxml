@@ -765,7 +765,7 @@ Amount]]></text>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[new BigDecimal((int) ($F{grandtotal}.doubleValue() + 0.05)).setScale(0).setScale(2)]]></textFieldExpression>
+				<textFieldExpression><![CDATA[new BigDecimal((int) ($F{grandtotal}.doubleValue() + 0.05)).setScale(2)]]></textFieldExpression>
 			</textField>
 			<staticText>
 				<reportElement x="443" y="74" width="91" height="10" uuid="f8a882a9-6ce1-43be-aa2b-a30e66ca3497"/>
