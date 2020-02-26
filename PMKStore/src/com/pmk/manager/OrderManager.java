@@ -178,8 +178,8 @@ public class OrderManager {
 			 * if its a GST customer, then cess is not applicable here
 			 * so non-default tax is set
 			 */
+			MProduct product = orderline.getProduct();
 			if (isGSTCustomer) {
-				MProduct product = orderline.getProduct();
 				String sql = "AD_Client_ID = " + Env.getAD_Client_ID(ctx) + " AND C_TaxCategory_ID = " + product.getC_TaxCategory_ID()
 					+ " and IsDefault='N' and isactive='Y' and coalesce(parent_tax_id,0) = 0";
 				int[] ids = MTax.getAllIDs(MTax.Table_Name, sql, trxName);
@@ -187,7 +187,12 @@ public class OrderManager {
 					orderline.setC_Tax_ID(ids[0]);
 				}
 			} else {
-				orderline.setTax();//so as to set the detault tax
+//				orderline.setTax();//so as to set the detault tax
+				MTaxCategory taxCategory = (MTaxCategory) product.getC_TaxCategory();
+				MTax tax = taxCategory.getDefaultTax();
+				if (tax != null) {
+					orderline.setC_Tax_ID(tax.get_ID());
+				}
 			}
 			
 			BigDecimal unitPrice = item.getPriceEntered();
